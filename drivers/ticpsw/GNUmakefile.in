@@ -77,7 +77,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-subdir = stack/ipv4/udp
+subdir = drivers/ticpsw
 DIST_COMMON = $(srcdir)/GNUmakefile.in $(srcdir)/GNUmakefile.am \
 	$(top_srcdir)/config/autoconf/depcomp
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -110,10 +110,10 @@ AM_V_AR = $(am__v_AR_@AM_V@)
 am__v_AR_ = $(am__v_AR_@AM_DEFAULT_V@)
 am__v_AR_0 = @echo "  AR      " $@;
 am__v_AR_1 = 
-libkernel_udp_a_AR = $(AR) $(ARFLAGS)
-libkernel_udp_a_LIBADD =
-am_libkernel_udp_a_OBJECTS = libkernel_udp_a-udp.$(OBJEXT)
-libkernel_udp_a_OBJECTS = $(am_libkernel_udp_a_OBJECTS)
+libkernel_ticpsw_a_AR = $(AR) $(ARFLAGS)
+libkernel_ticpsw_a_LIBADD =
+am_libkernel_ticpsw_a_OBJECTS = libkernel_ticpsw_a-cpsw.$(OBJEXT)
+libkernel_ticpsw_a_OBJECTS = $(am_libkernel_ticpsw_a_OBJECTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -152,8 +152,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libkernel_udp_a_SOURCES)
-DIST_SOURCES = $(libkernel_udp_a_SOURCES)
+SOURCES = $(libkernel_ticpsw_a_SOURCES)
+DIST_SOURCES = $(libkernel_ticpsw_a_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -317,18 +317,18 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 moduledir = $(DESTDIR)$(RTNET_MODULE_DIR)
 modext = $(RTNET_MODULE_EXT)
-EXTRA_LIBRARIES = libkernel_udp.a
-libkernel_udp_a_CPPFLAGS = \
+EXTRA_LIBRARIES = libkernel_ticpsw.a
+libkernel_ticpsw_a_CPPFLAGS = \
 	$(RTEXT_KMOD_CFLAGS) \
 	-I$(top_srcdir)/stack/include \
 	-I$(top_builddir)/stack/include
 
-libkernel_udp_a_SOURCES = \
-	udp.c
+libkernel_ticpsw_a_SOURCES = \
+	cpsw.c
 
-OBJS = rtudp$(modext)
-EXTRA_DIST = Makefile.kbuild Kconfig
-DISTCLEANFILES = Makefile Modules.symvers Module.symvers Module.markers modules.order
+OBJS = rt_ticpsw$(modext)
+EXTRA_DIST = Makefile.kbuild
+DISTCLEANFILES = Makefile
 all: all-am
 
 .SUFFIXES:
@@ -342,9 +342,9 @@ $(srcdir)/GNUmakefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/GNUmakefile.am  $(am_
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign stack/ipv4/udp/GNUmakefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign drivers/ticpsw/GNUmakefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign stack/ipv4/udp/GNUmakefile
+	  $(AUTOMAKE) --foreign drivers/ticpsw/GNUmakefile
 .PRECIOUS: GNUmakefile
 GNUmakefile: $(srcdir)/GNUmakefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -364,10 +364,10 @@ $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 
-libkernel_udp.a: $(libkernel_udp_a_OBJECTS) $(libkernel_udp_a_DEPENDENCIES) $(EXTRA_libkernel_udp_a_DEPENDENCIES) 
-	$(AM_V_at)-rm -f libkernel_udp.a
-	$(AM_V_AR)$(libkernel_udp_a_AR) libkernel_udp.a $(libkernel_udp_a_OBJECTS) $(libkernel_udp_a_LIBADD)
-	$(AM_V_at)$(RANLIB) libkernel_udp.a
+libkernel_ticpsw.a: $(libkernel_ticpsw_a_OBJECTS) $(libkernel_ticpsw_a_DEPENDENCIES) $(EXTRA_libkernel_ticpsw_a_DEPENDENCIES) 
+	$(AM_V_at)-rm -f libkernel_ticpsw.a
+	$(AM_V_AR)$(libkernel_ticpsw_a_AR) libkernel_ticpsw.a $(libkernel_ticpsw_a_OBJECTS) $(libkernel_ticpsw_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libkernel_ticpsw.a
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -375,7 +375,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_udp_a-udp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_ticpsw_a-cpsw.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -398,19 +398,19 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
 
-libkernel_udp_a-udp.o: udp.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_udp_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_udp_a-udp.o -MD -MP -MF $(DEPDIR)/libkernel_udp_a-udp.Tpo -c -o libkernel_udp_a-udp.o `test -f 'udp.c' || echo '$(srcdir)/'`udp.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libkernel_udp_a-udp.Tpo $(DEPDIR)/libkernel_udp_a-udp.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='udp.c' object='libkernel_udp_a-udp.o' libtool=no @AMDEPBACKSLASH@
+libkernel_ticpsw_a-cpsw.o: cpsw.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_ticpsw_a-cpsw.o -MD -MP -MF $(DEPDIR)/libkernel_ticpsw_a-cpsw.Tpo -c -o libkernel_ticpsw_a-cpsw.o `test -f 'cpsw.c' || echo '$(srcdir)/'`cpsw.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libkernel_ticpsw_a-cpsw.Tpo $(DEPDIR)/libkernel_ticpsw_a-cpsw.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='cpsw.c' object='libkernel_ticpsw_a-cpsw.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_udp_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_udp_a-udp.o `test -f 'udp.c' || echo '$(srcdir)/'`udp.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_ticpsw_a-cpsw.o `test -f 'cpsw.c' || echo '$(srcdir)/'`cpsw.c
 
-libkernel_udp_a-udp.obj: udp.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_udp_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_udp_a-udp.obj -MD -MP -MF $(DEPDIR)/libkernel_udp_a-udp.Tpo -c -o libkernel_udp_a-udp.obj `if test -f 'udp.c'; then $(CYGPATH_W) 'udp.c'; else $(CYGPATH_W) '$(srcdir)/udp.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libkernel_udp_a-udp.Tpo $(DEPDIR)/libkernel_udp_a-udp.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='udp.c' object='libkernel_udp_a-udp.obj' libtool=no @AMDEPBACKSLASH@
+libkernel_ticpsw_a-cpsw.obj: cpsw.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_ticpsw_a-cpsw.obj -MD -MP -MF $(DEPDIR)/libkernel_ticpsw_a-cpsw.Tpo -c -o libkernel_ticpsw_a-cpsw.obj `if test -f 'cpsw.c'; then $(CYGPATH_W) 'cpsw.c'; else $(CYGPATH_W) '$(srcdir)/cpsw.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libkernel_ticpsw_a-cpsw.Tpo $(DEPDIR)/libkernel_ticpsw_a-cpsw.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='cpsw.c' object='libkernel_ticpsw_a-cpsw.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_udp_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_udp_a-udp.obj `if test -f 'udp.c'; then $(CYGPATH_W) 'udp.c'; else $(CYGPATH_W) '$(srcdir)/udp.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_ticpsw_a-cpsw.obj `if test -f 'cpsw.c'; then $(CYGPATH_W) 'cpsw.c'; else $(CYGPATH_W) '$(srcdir)/cpsw.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -623,7 +623,7 @@ uninstall-am: uninstall-local
 	uninstall-local
 
 
-rtudp.o: libkernel_udp.a
+rt_ticpsw.o: libkernel_ticpsw.a
 	$(LD) --whole-archive $< -r -o $@
 
 all-local: all-local$(modext)
@@ -633,7 +633,7 @@ all-local.o: $(OBJS)
 
 # 2.6 build
 all-local.ko: @RTNET_KBUILD_ENV@
-all-local.ko: $(libkernel_udp_a_SOURCES) FORCE
+all-local.ko: $(libkernel_ticpsw_a_SOURCES) FORCE
 	$(RTNET_KBUILD_CMD)
 
 install-exec-local: $(OBJS)
@@ -643,7 +643,7 @@ install-exec-local: $(OBJS)
 uninstall-local:
 	for MOD in $(OBJS); do $(RM) $(moduledir)/$$MOD; done
 
-clean-local: $(libkernel_udp_a_SOURCES)
+clean-local: $(libkernel_ticpsw_a_SOURCES)
 	$(RTNET_KBUILD_CLEAN)
 
 distclean-local:

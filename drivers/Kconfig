@@ -90,6 +90,11 @@ config RTNET_DRV_LOOPBACK
     default y
 
 
+config RTNET_DRV_TICPSW
+    bool "TI CPSW"
+    default y
+
+
 config RTNET_DRV_SMC91111
     bool "SMSC LAN91C111"
 

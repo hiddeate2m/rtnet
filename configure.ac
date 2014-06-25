@@ -1,11 +1,9 @@
 # -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ(2.61)
+AC_PREREQ([2.69])
 
-AC_INIT([RTnet],
-        m4_normalize(m4_include(config/autoconf/.version)),
-        [rtnet-users@lists.sourceforge.net])
+AC_INIT([RTnet],[m4_normalize(m4_include(config/autoconf/.version))],[rtnet-users@lists.sourceforge.net])
 AC_CONFIG_HEADERS([config/rtnet_config_pre.h])
 AC_CONFIG_AUX_DIR([config/autoconf])
 AC_CONFIG_MACRO_DIR([config/m4])
@@ -36,7 +34,7 @@ AC_DEFINE_UNQUOTED(CONFIG_RTNET_COMPILER, "`$CC -v 2>&1 | tail -n 1`" , [Compile
 
 AM_INIT_AUTOMAKE([foreign no-exeext dist-bzip2 no-dist-gzip])
 AM_MAINTAINER_MODE
-AC_PROG_LIBTOOL
+LT_INIT
 AM_PROG_AS
 AC_SUBST(LD)
 
@@ -1040,6 +1038,16 @@ AC_ARG_ENABLE(e1000e,
 AC_MSG_RESULT([${CONFIG_RTNET_DRV_E1000E:-n}])
 AM_CONDITIONAL(CONFIG_RTNET_DRV_E1000E,[test "$CONFIG_RTNET_DRV_E1000E" = "y"])
 
+AC_MSG_CHECKING([whether to build TI CPSW driver])
+AC_ARG_ENABLE(ticpsw,
+    AS_HELP_STRING([--enable-ticpsw], [build TI CPSW driver]),
+    [case "$enableval" in
+        y | yes) CONFIG_RTNET_DRV_TICPSW=y ;;
+        *) CONFIG_RTNET_DRV_TICPSW=n ;;
+    esac])
+AC_MSG_RESULT([${CONFIG_RTNET_DRV_TICPSW:-n}])
+AM_CONDITIONAL(CONFIG_RTNET_DRV_TICPSW,[test "$CONFIG_RTNET_DRV_TICPSW" = "y"])
+
 AC_MSG_CHECKING([whether to build AT91 Ethernet [AT91RM9200] driver])
 AC_ARG_ENABLE(at91ether,
     AS_HELP_STRING([--enable-at91ether], [build AT91 Ethernet driver]),
@@ -1455,6 +1463,7 @@ if test x$CONFIG_KBUILD = xy; then
     for DIR in \
         drivers \
         drivers/e1000 \
+        drivers/ticpsw \
         drivers/e1000e \
         drivers/mpc52xx_fec \
         drivers/tulip \
@@ -1539,6 +1548,7 @@ AC_CONFIG_FILES([ \
     \
     drivers/GNUmakefile \
     drivers/e1000/GNUmakefile \
+    drivers/ticpsw/GNUmakefile \
     drivers/e1000e/GNUmakefile \
     drivers/mpc52xx_fec/GNUmakefile \
     drivers/tulip/GNUmakefile \

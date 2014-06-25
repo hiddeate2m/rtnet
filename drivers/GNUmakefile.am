@@ -20,6 +20,10 @@ if CONFIG_RTNET_DRV_IGB
 OPTDIRS += igb
 endif
 
+if CONFIG_RTNET_DRV_TICPSW
+OPTDIRS += ticpsw
+endif
+
 SUBDIRS = experimental $(OPTDIRS)
 
 moduledir = $(DESTDIR)$(RTNET_MODULE_DIR)
