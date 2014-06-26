@@ -317,7 +317,6 @@ static inline void slave_write(struct cpsw_slave *slave, u32 val, u32 offset)
 }
 
 struct cpsw_priv {
-	spinlock_t			lock;
 	struct platform_device		*pdev;
 	struct net_device		*ndev;
 	struct resource			*cpsw_res;
@@ -1310,7 +1309,6 @@ static int cpsw_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, ndev);
 	priv = netdev_priv(ndev);
-	spin_lock_init(&priv->lock);
 	priv->pdev = pdev;
 	priv->ndev = ndev;
 	priv->dev  = &ndev->dev;
