@@ -28,6 +28,8 @@
 #include <linux/ptp_clock_kernel.h>
 #include <linux/skbuff.h>
 
+#include <rtnet_port.h>
+
 struct cpsw_cpts {
 	u32 idver;                /* Identification and version */
 	u32 control;              /* Time sync control */
@@ -113,7 +115,7 @@ struct cpts {
 #ifdef CONFIG_TI_CPTS
 	struct ptp_clock_info info;
 	struct ptp_clock *clock;
-	spinlock_t lock; /* protects time registers */
+	rtdm_lock_t lock; /* protects time registers */
 	u32 cc_mult; /* for the nominal frequency */
 	struct cyclecounter cc;
 	struct timecounter tc;

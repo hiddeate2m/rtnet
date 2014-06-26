@@ -134,7 +134,7 @@ static int cpts_ptp_adjfreq(struct ptp_clock_info *ptp, s32 ppb)
 	u64 adj;
 	u32 diff, mult;
 	int neg_adj = 0;
-	unsigned long flags;
+	rtdm_lockctx_t context;
 	struct cpts *cpts = container_of(ptp, struct cpts, info);
 
 	if (ppb < 0) {
@@ -146,13 +146,13 @@ static int cpts_ptp_adjfreq(struct ptp_clock_info *ptp, s32 ppb)
 	adj *= ppb;
 	diff = div_u64(adj, 1000000000ULL);
 
-	spin_lock_irqsave(&cpts->lock, flags);
+	rtdm_lock_get_irqsave(&cpts->lock, context);
 
 	timecounter_read(&cpts->tc);
 
 	cpts->cc.mult = neg_adj ? mult - diff : mult + diff;
 
-	spin_unlock_irqrestore(&cpts->lock, flags);
+	rtdm_lock_put_irqrestore(&cpts->lock, context);
 
 	return 0;
 }
@@ -160,14 +160,14 @@ static int cpts_ptp_adjfreq(struct ptp_clock_info *ptp, s32 ppb)
 static int cpts_ptp_adjtime(struct ptp_clock_info *ptp, s64 delta)
 {
 	s64 now;
-	unsigned long flags;
+	rtdm_lockctx_t context;
 	struct cpts *cpts = container_of(ptp, struct cpts, info);
 
-	spin_lock_irqsave(&cpts->lock, flags);
+	rtdm_lock_get_irqsave(&cpts->lock, context);
 	now = timecounter_read(&cpts->tc);
 	now += delta;
 	timecounter_init(&cpts->tc, &cpts->cc, now);
-	spin_unlock_irqrestore(&cpts->lock, flags);
+	rtdm_lock_put_irqrestore(&cpts->lock, context);
 
 	return 0;
 }
@@ -176,12 +176,12 @@ static int cpts_ptp_gettime(struct ptp_clock_info *ptp, struct timespec *ts)
 {
 	u64 ns;
 	u32 remainder;
-	unsigned long flags;
+	rtdm_lockctx_t context;
 	struct cpts *cpts = container_of(ptp, struct cpts, info);
 
-	spin_lock_irqsave(&cpts->lock, flags);
+	rtdm_lock_get_irqsave(&cpts->lock, context);
 	ns = timecounter_read(&cpts->tc);
-	spin_unlock_irqrestore(&cpts->lock, flags);
+	rtdm_lock_put_irqrestore(&cpts->lock, context);
 
 	ts->tv_sec = div_u64_rem(ns, 1000000000, &remainder);
 	ts->tv_nsec = remainder;
@@ -193,15 +193,15 @@ static int cpts_ptp_settime(struct ptp_clock_info *ptp,
 			    const struct timespec *ts)
 {
 	u64 ns;
-	unsigned long flags;
+	rtdm_lockctx_t context;
 	struct cpts *cpts = container_of(ptp, struct cpts, info);
 
 	ns = ts->tv_sec * 1000000000ULL;
 	ns += ts->tv_nsec;
 
-	spin_lock_irqsave(&cpts->lock, flags);
+	rtdm_lock_get_irqsave(&cpts->lock, context);
 	timecounter_init(&cpts->tc, &cpts->cc, ns);
-	spin_unlock_irqrestore(&cpts->lock, flags);
+	rtdm_lock_put_irqrestore(&cpts->lock, context);
 
 	return 0;
 }
@@ -301,14 +301,14 @@ static u64 cpts_find_ts(struct cpts *cpts, struct sk_buff *skb, int ev_type)
 	struct cpts_event *event;
 	struct list_head *this, *next;
 	unsigned int class = sk_run_filter(skb, ptp_filter);
-	unsigned long flags;
+	rtdm_lockctx_t context;
 	u16 seqid;
 	u8 mtype;
 
 	if (class == PTP_CLASS_NONE)
 		return 0;
 
-	spin_lock_irqsave(&cpts->lock, flags);
+	rtdm_lock_get_irqsave(&cpts->lock, context);
 	cpts_fifo_read(cpts, CPTS_EV_PUSH);
 	list_for_each_safe(this, next, &cpts->events) {
 		event = list_entry(this, struct cpts_event, list);
@@ -327,7 +327,7 @@ static u64 cpts_find_ts(struct cpts *cpts, struct sk_buff *skb, int ev_type)
 			break;
 		}
 	}
-	spin_unlock_irqrestore(&cpts->lock, flags);
+	rtdm_lock_put_irqrestore(&cpts->lock, context);
 
 	return ns;
 }
@@ -369,7 +369,7 @@ int cpts_register(struct device *dev, struct cpts *cpts,
 {
 #ifdef CONFIG_TI_CPTS
 	int err, i;
-	unsigned long flags;
+	rtdm_lockctx_t context;
 
 	if (ptp_filter_init(ptp_filter, ARRAY_SIZE(ptp_filter))) {
 		pr_err("cpts: bad ptp filter\n");
@@ -382,7 +382,7 @@ int cpts_register(struct device *dev, struct cpts *cpts,
 		cpts->clock = NULL;
 		return err;
 	}
-	spin_lock_init(&cpts->lock);
+	rtdm_lock_init(&cpts->lock);
 
 	cpts->cc.read = cpts_systim_read;
 	cpts->cc.mask = CLOCKSOURCE_MASK(32);
@@ -399,9 +399,9 @@ int cpts_register(struct device *dev, struct cpts *cpts,
 	cpts_write32(cpts, CPTS_EN, control);
 	cpts_write32(cpts, TS_PEND_EN, int_enable);
 
-	spin_lock_irqsave(&cpts->lock, flags);
+	rtdm_lock_get_irqsave(&cpts->lock, context);
 	timecounter_init(&cpts->tc, &cpts->cc, ktime_to_ns(ktime_get_real()));
-	spin_unlock_irqrestore(&cpts->lock, flags);
+	rtdm_lock_put_irqrestore(&cpts->lock, context);
 
 	INIT_DELAYED_WORK(&cpts->overflow_work, cpts_overflow_check);
 	schedule_delayed_work(&cpts->overflow_work, CPTS_OVERFLOW_PERIOD);
