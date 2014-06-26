@@ -122,13 +122,13 @@ do {								\
 	do {			\
 		u32 i;		\
 		for (i = 0; i < priv->num_irqs; i++) \
-			enable_irq(priv->irqs_table[i]); \
+			rtdm_irq_enable(&priv->irqs_table[i]); \
 	} while (0);
 #define cpsw_disable_irq(priv)	\
 	do {			\
 		u32 i;		\
 		for (i = 0; i < priv->num_irqs; i++) \
-			disable_irq_nosync(priv->irqs_table[i]); \
+			rtdm_irq_disable(&priv->irqs_table[i]); \
 	} while (0);
 
 static int debug_level;
@@ -339,10 +339,12 @@ struct cpsw_priv {
 	struct cpdma_chan		*txch, *rxch;
 	struct cpsw_ale			*ale;
 	/* snapshot of IRQ numbers */
-	u32 irqs_table[4];
+	rtdm_irq_t irqs_table[4];
 	u32 num_irqs;
 	bool irq_enabled;
 	struct cpts cpts;
+
+		
 };
 
 #define napi_to_priv(napi)	container_of(napi, struct cpsw_priv, napi)
@@ -452,9 +454,9 @@ void cpsw_rx_handler(void *token, int len, int status)
 	WARN_ON(ret < 0);
 }
 
-static irqreturn_t cpsw_interrupt(int irq, void *dev_id)
+static int cpsw_interrupt(rtdm_irq_t *irq_handle)
 {
-	struct cpsw_priv *priv = dev_id;
+	struct cpsw_priv *priv = rtdm_irq_get_arg(irq_handle, struct cpsw_priv);
 
 	if (likely(netif_running(priv->ndev))) {
 		cpsw_intr_disable(priv);
@@ -524,9 +526,9 @@ static int cpsw_poll(struct napi_struct *napi, int budget)
 	return num_total_rx + num_total_rx;
 }
 
-static irqreturn_t cpsw_rx_thresh_pend_irq(int irq, void *dev_id)
+static int cpsw_rx_thresh_pend_irq(rtdm_irq_t *irq_handle)
 {
-	struct cpsw_priv *priv = dev_id;
+	struct cpsw_priv *priv = rtdm_irq_get_arg(irq_handle, struct cpsw_priv);
 
 	(void)priv;
 
@@ -534,9 +536,9 @@ static irqreturn_t cpsw_rx_thresh_pend_irq(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static irqreturn_t cpsw_rx_pend_irq(int irq, void *dev_id)
+static int cpsw_rx_pend_irq(rtdm_irq_t *irq_handle)
 {
-	struct cpsw_priv *priv = dev_id;
+	struct cpsw_priv *priv = rtdm_irq_get_arg(irq_handle, struct cpsw_priv);
 	int num_rx, total_rx;
 	u32 rx_stat;
 
@@ -554,9 +556,9 @@ static irqreturn_t cpsw_rx_pend_irq(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static irqreturn_t cpsw_tx_pend_irq(int irq, void *dev_id)
+static int cpsw_tx_pend_irq(rtdm_irq_t *irq_handle)
 {
-	struct cpsw_priv *priv = dev_id;
+	struct cpsw_priv *priv = rtdm_irq_get_arg(irq_handle, struct cpsw_priv);
 	int num_tx, total_tx;
 	u32 tx_stat;
 
@@ -573,9 +575,9 @@ static irqreturn_t cpsw_tx_pend_irq(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static irqreturn_t cpsw_misc_pend_irq(int irq, void *dev_id)
+static int cpsw_misc_pend_irq(rtdm_irq_t *irq_handle)
 {
-	struct cpsw_priv *priv = dev_id;
+	struct cpsw_priv *priv = rtdm_irq_get_arg(irq_handle, struct cpsw_priv);
 
 	(void)priv;
 	/* not handling this interrupt yet */
@@ -1272,9 +1274,9 @@ error_ret:
 	return ret;
 }
 
-static irq_handler_t cpsw_get_irq_handler(struct cpsw_priv *priv, int irq_idx)
+static rtdm_irq_handler_t cpsw_get_irq_handler(struct cpsw_priv *priv, int irq_idx)
 {
-	static const irq_handler_t non_napi_irq_tab[4] = {
+	static const rtdm_irq_handler_t non_napi_irq_tab[4] = {
 		cpsw_rx_thresh_pend_irq, cpsw_rx_pend_irq,
 		cpsw_tx_pend_irq, cpsw_misc_pend_irq
 	};
@@ -1298,7 +1300,7 @@ static int cpsw_probe(struct platform_device *pdev)
 	void __iomem			*ss_regs, *wr_regs;
 	struct resource			*res;
 	u32 slave_offset, sliver_offset, slave_size;
-	irq_handler_t			irqh;
+	rtdm_irq_handler_t		irqh;
 	int ret = 0, i, j, k = 0;
 
 	ndev = alloc_etherdev(sizeof(struct cpsw_priv));
@@ -1499,12 +1501,12 @@ static int cpsw_probe(struct platform_device *pdev)
 						"for #%d (%d)\n", k, i);
 				goto clean_ale_ret;
 			}
-			if (request_irq(i, irqh, IRQF_DISABLED,
-					dev_name(&pdev->dev), priv)) {
+			if (rtdm_irq_request(&priv->irqs_table[k], i, irqh, RTDM_IRQTYPE_SHARED,
+						dev_name(&pdev->dev), priv)) {
 				dev_err(priv->dev, "error attaching irq\n");
 				goto clean_ale_ret;
 			}
-			priv->irqs_table[k++] = i;
+			k++;
 		}
 	}
 	priv->num_irqs = k;
