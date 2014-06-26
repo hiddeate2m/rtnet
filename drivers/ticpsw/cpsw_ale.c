@@ -594,25 +594,19 @@ int cpsw_ale_control_get(struct cpsw_ale *ale, int port, int control)
 	return tmp & BITMASK(info->bits);
 }
 
-static void cpsw_ale_timer(unsigned long arg)
+static void cpsw_ale_timer(rtdm_timer_t *timer)
 {
-	struct cpsw_ale *ale = (struct cpsw_ale *)arg;
+	struct cpsw_ale *ale = container_of(timer, struct cpsw_ale, timer);
 
 	cpsw_ale_control_set(ale, 0, ALE_AGEOUT, 1);
-
-	if (ale->ageout) {
-		ale->timer.expires = jiffies + ale->ageout;
-		add_timer(&ale->timer);
-	}
 }
 
 int cpsw_ale_set_ageout(struct cpsw_ale *ale, int ageout)
 {
-	del_timer_sync(&ale->timer);
+	rtdm_timer_stop(&ale->timer);
 	ale->ageout = ageout * HZ;
 	if (ale->ageout) {
-		ale->timer.expires = jiffies + ale->ageout;
-		add_timer(&ale->timer);
+		rtdm_timer_start(&ale->timer, ale->ageout, ale->ageout, RTDM_TIMERMODE_RELATIVE);
 	}
 	return 0;
 }
@@ -627,18 +621,14 @@ void cpsw_ale_start(struct cpsw_ale *ale)
 	cpsw_ale_control_set(ale, 0, ALE_ENABLE, 1);
 	cpsw_ale_control_set(ale, 0, ALE_CLEAR, 1);
 
-	init_timer(&ale->timer);
-	ale->timer.data	    = (unsigned long)ale;
-	ale->timer.function = cpsw_ale_timer;
 	if (ale->ageout) {
-		ale->timer.expires = jiffies + ale->ageout;
-		add_timer(&ale->timer);
+		rtdm_timer_start(&ale->timer, ale->ageout, ale->ageout, RTDM_TIMERMODE_RELATIVE);
 	}
 }
 
 void cpsw_ale_stop(struct cpsw_ale *ale)
 {
-	del_timer_sync(&ale->timer);
+	rtdm_timer_stop(&ale->timer);
 }
 
 struct cpsw_ale *cpsw_ale_create(struct cpsw_ale_params *params)
@@ -648,6 +638,7 @@ struct cpsw_ale *cpsw_ale_create(struct cpsw_ale_params *params)
 	ale = kzalloc(sizeof(*ale), GFP_KERNEL);
 	if (!ale)
 		return NULL;
+	rtdm_timer_init(&ale->timer, cpsw_ale_timer, "optional much");
 
 	ale->params = *params;
 	ale->ageout = ale->params.ale_ageout * HZ;
@@ -661,6 +652,7 @@ int cpsw_ale_destroy(struct cpsw_ale *ale)
 		return -EINVAL;
 	cpsw_ale_stop(ale);
 	cpsw_ale_control_set(ale, 0, ALE_ENABLE, 0);
+	rtdm_timer_destroy(&ale->timer);
 	kfree(ale);
 	return 0;
 }

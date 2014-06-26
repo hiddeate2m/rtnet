@@ -15,6 +15,8 @@
 #ifndef __TI_CPSW_ALE_H__
 #define __TI_CPSW_ALE_H__
 
+#include <rtnet_port.h>
+
 struct cpsw_ale_params {
 	struct device		*dev;
 	void __iomem		*ale_regs;
@@ -25,8 +27,8 @@ struct cpsw_ale_params {
 
 struct cpsw_ale {
 	struct cpsw_ale_params	params;
-	struct timer_list	timer;
-	unsigned long		ageout;
+	rtdm_timer_t		timer;
+	 nanosecs_rel_t		ageout;
 };
 
 enum cpsw_ale_control {
