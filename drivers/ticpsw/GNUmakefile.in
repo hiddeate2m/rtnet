@@ -112,7 +112,10 @@ am__v_AR_0 = @echo "  AR      " $@;
 am__v_AR_1 = 
 libkernel_ticpsw_a_AR = $(AR) $(ARFLAGS)
 libkernel_ticpsw_a_LIBADD =
-am_libkernel_ticpsw_a_OBJECTS = libkernel_ticpsw_a-cpsw.$(OBJEXT)
+am_libkernel_ticpsw_a_OBJECTS = libkernel_ticpsw_a-cpsw.$(OBJEXT) \
+	libkernel_ticpsw_a-cpsw_ale.$(OBJEXT) \
+	libkernel_ticpsw_a-cpts.$(OBJEXT) \
+	libkernel_ticpsw_a-davinci_cpdma.$(OBJEXT)
 libkernel_ticpsw_a_OBJECTS = $(am_libkernel_ticpsw_a_OBJECTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -317,14 +320,19 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 moduledir = $(DESTDIR)$(RTNET_MODULE_DIR)
 modext = $(RTNET_MODULE_EXT)
-EXTRA_LIBRARIES = libkernel_ticpsw.a
+EXTRA_LIBRARIES = \
+	libkernel_ticpsw.a
+
 libkernel_ticpsw_a_CPPFLAGS = \
 	$(RTEXT_KMOD_CFLAGS) \
 	-I$(top_srcdir)/stack/include \
 	-I$(top_builddir)/stack/include
 
 libkernel_ticpsw_a_SOURCES = \
-	cpsw.c
+	cpsw.c \
+	cpsw_ale.c \
+	cpts.c \
+	davinci_cpdma.c
 
 OBJS = rt_ticpsw$(modext)
 EXTRA_DIST = Makefile.kbuild
@@ -376,6 +384,9 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_ticpsw_a-cpsw.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_ticpsw_a-cpsw_ale.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_ticpsw_a-cpts.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_ticpsw_a-davinci_cpdma.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -411,6 +422,48 @@ libkernel_ticpsw_a-cpsw.obj: cpsw.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='cpsw.c' object='libkernel_ticpsw_a-cpsw.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_ticpsw_a-cpsw.obj `if test -f 'cpsw.c'; then $(CYGPATH_W) 'cpsw.c'; else $(CYGPATH_W) '$(srcdir)/cpsw.c'; fi`
+
+libkernel_ticpsw_a-cpsw_ale.o: cpsw_ale.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_ticpsw_a-cpsw_ale.o -MD -MP -MF $(DEPDIR)/libkernel_ticpsw_a-cpsw_ale.Tpo -c -o libkernel_ticpsw_a-cpsw_ale.o `test -f 'cpsw_ale.c' || echo '$(srcdir)/'`cpsw_ale.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libkernel_ticpsw_a-cpsw_ale.Tpo $(DEPDIR)/libkernel_ticpsw_a-cpsw_ale.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='cpsw_ale.c' object='libkernel_ticpsw_a-cpsw_ale.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_ticpsw_a-cpsw_ale.o `test -f 'cpsw_ale.c' || echo '$(srcdir)/'`cpsw_ale.c
+
+libkernel_ticpsw_a-cpsw_ale.obj: cpsw_ale.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_ticpsw_a-cpsw_ale.obj -MD -MP -MF $(DEPDIR)/libkernel_ticpsw_a-cpsw_ale.Tpo -c -o libkernel_ticpsw_a-cpsw_ale.obj `if test -f 'cpsw_ale.c'; then $(CYGPATH_W) 'cpsw_ale.c'; else $(CYGPATH_W) '$(srcdir)/cpsw_ale.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libkernel_ticpsw_a-cpsw_ale.Tpo $(DEPDIR)/libkernel_ticpsw_a-cpsw_ale.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='cpsw_ale.c' object='libkernel_ticpsw_a-cpsw_ale.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_ticpsw_a-cpsw_ale.obj `if test -f 'cpsw_ale.c'; then $(CYGPATH_W) 'cpsw_ale.c'; else $(CYGPATH_W) '$(srcdir)/cpsw_ale.c'; fi`
+
+libkernel_ticpsw_a-cpts.o: cpts.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_ticpsw_a-cpts.o -MD -MP -MF $(DEPDIR)/libkernel_ticpsw_a-cpts.Tpo -c -o libkernel_ticpsw_a-cpts.o `test -f 'cpts.c' || echo '$(srcdir)/'`cpts.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libkernel_ticpsw_a-cpts.Tpo $(DEPDIR)/libkernel_ticpsw_a-cpts.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='cpts.c' object='libkernel_ticpsw_a-cpts.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_ticpsw_a-cpts.o `test -f 'cpts.c' || echo '$(srcdir)/'`cpts.c
+
+libkernel_ticpsw_a-cpts.obj: cpts.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_ticpsw_a-cpts.obj -MD -MP -MF $(DEPDIR)/libkernel_ticpsw_a-cpts.Tpo -c -o libkernel_ticpsw_a-cpts.obj `if test -f 'cpts.c'; then $(CYGPATH_W) 'cpts.c'; else $(CYGPATH_W) '$(srcdir)/cpts.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libkernel_ticpsw_a-cpts.Tpo $(DEPDIR)/libkernel_ticpsw_a-cpts.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='cpts.c' object='libkernel_ticpsw_a-cpts.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_ticpsw_a-cpts.obj `if test -f 'cpts.c'; then $(CYGPATH_W) 'cpts.c'; else $(CYGPATH_W) '$(srcdir)/cpts.c'; fi`
+
+libkernel_ticpsw_a-davinci_cpdma.o: davinci_cpdma.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_ticpsw_a-davinci_cpdma.o -MD -MP -MF $(DEPDIR)/libkernel_ticpsw_a-davinci_cpdma.Tpo -c -o libkernel_ticpsw_a-davinci_cpdma.o `test -f 'davinci_cpdma.c' || echo '$(srcdir)/'`davinci_cpdma.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libkernel_ticpsw_a-davinci_cpdma.Tpo $(DEPDIR)/libkernel_ticpsw_a-davinci_cpdma.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='davinci_cpdma.c' object='libkernel_ticpsw_a-davinci_cpdma.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_ticpsw_a-davinci_cpdma.o `test -f 'davinci_cpdma.c' || echo '$(srcdir)/'`davinci_cpdma.c
+
+libkernel_ticpsw_a-davinci_cpdma.obj: davinci_cpdma.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_ticpsw_a-davinci_cpdma.obj -MD -MP -MF $(DEPDIR)/libkernel_ticpsw_a-davinci_cpdma.Tpo -c -o libkernel_ticpsw_a-davinci_cpdma.obj `if test -f 'davinci_cpdma.c'; then $(CYGPATH_W) 'davinci_cpdma.c'; else $(CYGPATH_W) '$(srcdir)/davinci_cpdma.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libkernel_ticpsw_a-davinci_cpdma.Tpo $(DEPDIR)/libkernel_ticpsw_a-davinci_cpdma.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='davinci_cpdma.c' object='libkernel_ticpsw_a-davinci_cpdma.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_ticpsw_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_ticpsw_a-davinci_cpdma.obj `if test -f 'davinci_cpdma.c'; then $(CYGPATH_W) 'davinci_cpdma.c'; else $(CYGPATH_W) '$(srcdir)/davinci_cpdma.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -633,7 +686,8 @@ all-local.o: $(OBJS)
 
 # 2.6 build
 all-local.ko: @RTNET_KBUILD_ENV@
-all-local.ko: $(libkernel_ticpsw_a_SOURCES) FORCE
+all-local.ko: $(libkernel_ticpsw_a_SOURCES) \
+		FORCE
 	$(RTNET_KBUILD_CMD)
 
 install-exec-local: $(OBJS)

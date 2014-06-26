@@ -141,6 +141,12 @@ libkernel_at91_ether_a_LIBADD =
 am_libkernel_at91_ether_a_OBJECTS =  \
 	libkernel_at91_ether_a-rt_at91_ether.$(OBJEXT)
 libkernel_at91_ether_a_OBJECTS = $(am_libkernel_at91_ether_a_OBJECTS)
+libkernel_davinci_mdio_a_AR = $(AR) $(ARFLAGS)
+libkernel_davinci_mdio_a_LIBADD =
+am_libkernel_davinci_mdio_a_OBJECTS =  \
+	libkernel_davinci_mdio_a-rt_r8169.$(OBJEXT)
+libkernel_davinci_mdio_a_OBJECTS =  \
+	$(am_libkernel_davinci_mdio_a_OBJECTS)
 libkernel_eepro100_a_AR = $(AR) $(ARFLAGS)
 libkernel_eepro100_a_LIBADD =
 am_libkernel_eepro100_a_OBJECTS =  \
@@ -200,6 +206,10 @@ libkernel_smc91111_a_LIBADD =
 am_libkernel_smc91111_a_OBJECTS =  \
 	libkernel_smc91111_a-rt_smc91111.$(OBJEXT)
 libkernel_smc91111_a_OBJECTS = $(am_libkernel_smc91111_a_OBJECTS)
+libkernel_smsc_a_AR = $(AR) $(ARFLAGS)
+libkernel_smsc_a_LIBADD =
+am_libkernel_smsc_a_OBJECTS = libkernel_smsc_a-rt_r8169.$(OBJEXT)
+libkernel_smsc_a_OBJECTS = $(am_libkernel_smsc_a_OBJECTS)
 libkernel_via_rhine_a_AR = $(AR) $(ARFLAGS)
 libkernel_via_rhine_a_LIBADD =
 am_libkernel_via_rhine_a_OBJECTS =  \
@@ -245,6 +255,7 @@ am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(libkernel_8139too_a_SOURCES) \
 	$(libkernel_at91_ether_a_SOURCES) \
+	$(libkernel_davinci_mdio_a_SOURCES) \
 	$(libkernel_eepro100_a_SOURCES) $(libkernel_eth1394_a_SOURCES) \
 	$(libkernel_fec_a_SOURCES) $(libkernel_loopback_a_SOURCES) \
 	$(libkernel_macb_a_SOURCES) \
@@ -253,9 +264,10 @@ SOURCES = $(libkernel_8139too_a_SOURCES) \
 	$(libkernel_mpc8xx_fec_a_SOURCES) \
 	$(libkernel_natsemi_a_SOURCES) $(libkernel_pcnet32_a_SOURCES) \
 	$(libkernel_r8169_a_SOURCES) $(libkernel_smc91111_a_SOURCES) \
-	$(libkernel_via_rhine_a_SOURCES)
+	$(libkernel_smsc_a_SOURCES) $(libkernel_via_rhine_a_SOURCES)
 DIST_SOURCES = $(libkernel_8139too_a_SOURCES) \
 	$(libkernel_at91_ether_a_SOURCES) \
+	$(libkernel_davinci_mdio_a_SOURCES) \
 	$(libkernel_eepro100_a_SOURCES) $(libkernel_eth1394_a_SOURCES) \
 	$(libkernel_fec_a_SOURCES) $(libkernel_loopback_a_SOURCES) \
 	$(libkernel_macb_a_SOURCES) \
@@ -264,7 +276,7 @@ DIST_SOURCES = $(libkernel_8139too_a_SOURCES) \
 	$(libkernel_mpc8xx_fec_a_SOURCES) \
 	$(libkernel_natsemi_a_SOURCES) $(libkernel_pcnet32_a_SOURCES) \
 	$(libkernel_r8169_a_SOURCES) $(libkernel_smc91111_a_SOURCES) \
-	$(libkernel_via_rhine_a_SOURCES)
+	$(libkernel_smsc_a_SOURCES) $(libkernel_via_rhine_a_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
 	ctags-recursive dvi-recursive html-recursive info-recursive \
 	install-data-recursive install-dvi-recursive \
@@ -488,7 +500,9 @@ EXTRA_LIBRARIES = \
 	libkernel_smc91111.a \
 	libkernel_macb.a \
 	libkernel_via-rhine.a \
-	libkernel_r8169.a
+	libkernel_r8169.a \
+	libkernel_davinci_mdio.a \
+	libkernel_smsc.a
 
 libkernel_8139too_a_CPPFLAGS = \
 	$(RTEXT_KMOD_CFLAGS) \
@@ -614,11 +628,28 @@ libkernel_r8169_a_CPPFLAGS = \
 libkernel_r8169_a_SOURCES = \
 	rt_r8169.c
 
-OBJS = $(am__append_7) $(am__append_8) $(am__append_9) \
-	$(am__append_10) $(am__append_11) $(am__append_12) \
-	$(am__append_13) $(am__append_14) $(am__append_15) \
-	$(am__append_16) $(am__append_17) $(am__append_18) \
-	$(am__append_19) $(am__append_20) $(am__append_21)
+libkernel_davinci_mdio_a_CPPFLAGS = \
+	$(RTEXT_KMOD_CFLAGS) \
+	-I$(top_srcdir)/stack/include \
+	-I$(top_builddir)/stack/include
+
+libkernel_davinci_mdio_a_SOURCES = \
+	rt_r8169.c
+
+libkernel_smsc_a_CPPFLAGS = \
+	$(RTEXT_KMOD_CFLAGS) \
+	-I$(top_srcdir)/stack/include \
+	-I$(top_builddir)/stack/include
+
+libkernel_smsc_a_SOURCES = \
+	rt_r8169.c
+
+OBJS = rt_davinci_mdio$(modext) rt_smsc$(modext) $(am__append_7) \
+	$(am__append_8) $(am__append_9) $(am__append_10) \
+	$(am__append_11) $(am__append_12) $(am__append_13) \
+	$(am__append_14) $(am__append_15) $(am__append_16) \
+	$(am__append_17) $(am__append_18) $(am__append_19) \
+	$(am__append_20) $(am__append_21)
 EXTRA_DIST = Kconfig Makefile.kbuild README.r8169
 DISTCLEANFILES = Makefile Modules.symvers Module.symvers Module.markers modules.order
 all: all-recursive
@@ -665,6 +696,11 @@ libkernel_at91_ether.a: $(libkernel_at91_ether_a_OBJECTS) $(libkernel_at91_ether
 	$(AM_V_at)-rm -f libkernel_at91_ether.a
 	$(AM_V_AR)$(libkernel_at91_ether_a_AR) libkernel_at91_ether.a $(libkernel_at91_ether_a_OBJECTS) $(libkernel_at91_ether_a_LIBADD)
 	$(AM_V_at)$(RANLIB) libkernel_at91_ether.a
+
+libkernel_davinci_mdio.a: $(libkernel_davinci_mdio_a_OBJECTS) $(libkernel_davinci_mdio_a_DEPENDENCIES) $(EXTRA_libkernel_davinci_mdio_a_DEPENDENCIES) 
+	$(AM_V_at)-rm -f libkernel_davinci_mdio.a
+	$(AM_V_AR)$(libkernel_davinci_mdio_a_AR) libkernel_davinci_mdio.a $(libkernel_davinci_mdio_a_OBJECTS) $(libkernel_davinci_mdio_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libkernel_davinci_mdio.a
 
 libkernel_eepro100.a: $(libkernel_eepro100_a_OBJECTS) $(libkernel_eepro100_a_DEPENDENCIES) $(EXTRA_libkernel_eepro100_a_DEPENDENCIES) 
 	$(AM_V_at)-rm -f libkernel_eepro100.a
@@ -726,6 +762,11 @@ libkernel_smc91111.a: $(libkernel_smc91111_a_OBJECTS) $(libkernel_smc91111_a_DEP
 	$(AM_V_AR)$(libkernel_smc91111_a_AR) libkernel_smc91111.a $(libkernel_smc91111_a_OBJECTS) $(libkernel_smc91111_a_LIBADD)
 	$(AM_V_at)$(RANLIB) libkernel_smc91111.a
 
+libkernel_smsc.a: $(libkernel_smsc_a_OBJECTS) $(libkernel_smsc_a_DEPENDENCIES) $(EXTRA_libkernel_smsc_a_DEPENDENCIES) 
+	$(AM_V_at)-rm -f libkernel_smsc.a
+	$(AM_V_AR)$(libkernel_smsc_a_AR) libkernel_smsc.a $(libkernel_smsc_a_OBJECTS) $(libkernel_smsc_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libkernel_smsc.a
+
 libkernel_via-rhine.a: $(libkernel_via_rhine_a_OBJECTS) $(libkernel_via_rhine_a_DEPENDENCIES) $(EXTRA_libkernel_via_rhine_a_DEPENDENCIES) 
 	$(AM_V_at)-rm -f libkernel_via-rhine.a
 	$(AM_V_AR)$(libkernel_via_rhine_a_AR) libkernel_via-rhine.a $(libkernel_via_rhine_a_OBJECTS) $(libkernel_via_rhine_a_LIBADD)
@@ -739,6 +780,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_8139too_a-rt_8139too.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_at91_ether_a-rt_at91_ether.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_davinci_mdio_a-rt_r8169.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_eepro100_a-rt_eepro100.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_eth1394_a-rt_eth1394.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_fec_a-rt_fec.Po@am__quote@
@@ -751,6 +793,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_pcnet32_a-rt_pcnet32.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_r8169_a-rt_r8169.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_smc91111_a-rt_smc91111.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_smsc_a-rt_r8169.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libkernel_via_rhine_a-rt_via-rhine.Po@am__quote@
 
 .c.o:
@@ -801,6 +844,20 @@ libkernel_at91_ether_a-rt_at91_ether.obj: rt_at91_ether.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='rt_at91_ether.c' object='libkernel_at91_ether_a-rt_at91_ether.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_at91_ether_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_at91_ether_a-rt_at91_ether.obj `if test -f 'rt_at91_ether.c'; then $(CYGPATH_W) 'rt_at91_ether.c'; else $(CYGPATH_W) '$(srcdir)/rt_at91_ether.c'; fi`
+
+libkernel_davinci_mdio_a-rt_r8169.o: rt_r8169.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_davinci_mdio_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_davinci_mdio_a-rt_r8169.o -MD -MP -MF $(DEPDIR)/libkernel_davinci_mdio_a-rt_r8169.Tpo -c -o libkernel_davinci_mdio_a-rt_r8169.o `test -f 'rt_r8169.c' || echo '$(srcdir)/'`rt_r8169.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libkernel_davinci_mdio_a-rt_r8169.Tpo $(DEPDIR)/libkernel_davinci_mdio_a-rt_r8169.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='rt_r8169.c' object='libkernel_davinci_mdio_a-rt_r8169.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_davinci_mdio_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_davinci_mdio_a-rt_r8169.o `test -f 'rt_r8169.c' || echo '$(srcdir)/'`rt_r8169.c
+
+libkernel_davinci_mdio_a-rt_r8169.obj: rt_r8169.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_davinci_mdio_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_davinci_mdio_a-rt_r8169.obj -MD -MP -MF $(DEPDIR)/libkernel_davinci_mdio_a-rt_r8169.Tpo -c -o libkernel_davinci_mdio_a-rt_r8169.obj `if test -f 'rt_r8169.c'; then $(CYGPATH_W) 'rt_r8169.c'; else $(CYGPATH_W) '$(srcdir)/rt_r8169.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libkernel_davinci_mdio_a-rt_r8169.Tpo $(DEPDIR)/libkernel_davinci_mdio_a-rt_r8169.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='rt_r8169.c' object='libkernel_davinci_mdio_a-rt_r8169.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_davinci_mdio_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_davinci_mdio_a-rt_r8169.obj `if test -f 'rt_r8169.c'; then $(CYGPATH_W) 'rt_r8169.c'; else $(CYGPATH_W) '$(srcdir)/rt_r8169.c'; fi`
 
 libkernel_eepro100_a-rt_eepro100.o: rt_eepro100.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_eepro100_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_eepro100_a-rt_eepro100.o -MD -MP -MF $(DEPDIR)/libkernel_eepro100_a-rt_eepro100.Tpo -c -o libkernel_eepro100_a-rt_eepro100.o `test -f 'rt_eepro100.c' || echo '$(srcdir)/'`rt_eepro100.c
@@ -969,6 +1026,20 @@ libkernel_smc91111_a-rt_smc91111.obj: rt_smc91111.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='rt_smc91111.c' object='libkernel_smc91111_a-rt_smc91111.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_smc91111_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_smc91111_a-rt_smc91111.obj `if test -f 'rt_smc91111.c'; then $(CYGPATH_W) 'rt_smc91111.c'; else $(CYGPATH_W) '$(srcdir)/rt_smc91111.c'; fi`
+
+libkernel_smsc_a-rt_r8169.o: rt_r8169.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_smsc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_smsc_a-rt_r8169.o -MD -MP -MF $(DEPDIR)/libkernel_smsc_a-rt_r8169.Tpo -c -o libkernel_smsc_a-rt_r8169.o `test -f 'rt_r8169.c' || echo '$(srcdir)/'`rt_r8169.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libkernel_smsc_a-rt_r8169.Tpo $(DEPDIR)/libkernel_smsc_a-rt_r8169.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='rt_r8169.c' object='libkernel_smsc_a-rt_r8169.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_smsc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_smsc_a-rt_r8169.o `test -f 'rt_r8169.c' || echo '$(srcdir)/'`rt_r8169.c
+
+libkernel_smsc_a-rt_r8169.obj: rt_r8169.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_smsc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_smsc_a-rt_r8169.obj -MD -MP -MF $(DEPDIR)/libkernel_smsc_a-rt_r8169.Tpo -c -o libkernel_smsc_a-rt_r8169.obj `if test -f 'rt_r8169.c'; then $(CYGPATH_W) 'rt_r8169.c'; else $(CYGPATH_W) '$(srcdir)/rt_r8169.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libkernel_smsc_a-rt_r8169.Tpo $(DEPDIR)/libkernel_smsc_a-rt_r8169.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='rt_r8169.c' object='libkernel_smsc_a-rt_r8169.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_smsc_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libkernel_smsc_a-rt_r8169.obj `if test -f 'rt_r8169.c'; then $(CYGPATH_W) 'rt_r8169.c'; else $(CYGPATH_W) '$(srcdir)/rt_r8169.c'; fi`
 
 libkernel_via_rhine_a-rt_via-rhine.o: rt_via-rhine.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libkernel_via_rhine_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libkernel_via_rhine_a-rt_via-rhine.o -MD -MP -MF $(DEPDIR)/libkernel_via_rhine_a-rt_via-rhine.Tpo -c -o libkernel_via_rhine_a-rt_via-rhine.o `test -f 'rt_via-rhine.c' || echo '$(srcdir)/'`rt_via-rhine.c
@@ -1313,6 +1384,12 @@ rt_via-rhine.o: libkernel_via-rhine.a
 rt_r8169.o: libkernel_r8169.a
 	$(LD) --whole-archive $< -r -o $@
 
+rt_davinci_mdio.o: libkernel_davinci_mdio.a
+	$(LD) --whole-archive $< -r -o $@
+
+rt_smsc.o: libkernel_smsc.a
+	$(LD) --whole-archive $< -r -o $@
+
 all-local: all-local$(modext)
 
 # 2.4 build
@@ -1334,6 +1411,8 @@ all-local.ko: $(libkernel_8139too_a_SOURCES) \
 		$(libkernel_macb_a_SOURCES) \
 		$(libkernel_via_rhine_a_SOURCES) \
 		$(libkernel_r8169_a_SOURCES) \
+		$(libkernel_davinci_mdio_a_SOURCES) \
+		$(libkernel_smsc_a_SOURCES) \
 		FORCE
 	$(RTNET_KBUILD_CMD)
 
@@ -1358,7 +1437,9 @@ clean-local: $(libkernel_8139too_a_SOURCES) \
 		$(libkernel_smc91111_a_SOURCES) \
 		$(libkernel_macb_a_SOURCES) \
 		$(libkernel_via_rhine_a_SOURCES) \
-		$(libkernel_r8169_a_SOURCES)
+		$(libkernel_r8169_a_SOURCES) \
+		$(libkernel_davinci_mdio_a_SOURCES) \
+		$(libkernel_smsc_a_SOURCES)
 	$(RTNET_KBUILD_CLEAN)
 
 distclean-local:

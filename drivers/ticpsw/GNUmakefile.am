@@ -1,7 +1,8 @@
 moduledir = $(DESTDIR)$(RTNET_MODULE_DIR)
 modext = $(RTNET_MODULE_EXT)
 
-EXTRA_LIBRARIES = libkernel_ticpsw.a
+EXTRA_LIBRARIES = \
+	libkernel_ticpsw.a
 
 libkernel_ticpsw_a_CPPFLAGS = \
 	$(RTEXT_KMOD_CFLAGS) \
@@ -9,7 +10,10 @@ libkernel_ticpsw_a_CPPFLAGS = \
 	-I$(top_builddir)/stack/include
 
 libkernel_ticpsw_a_SOURCES = \
-	cpsw.c
+	cpsw.c \
+	cpsw_ale.c \
+	cpts.c \
+	davinci_cpdma.c
 
 OBJS = rt_ticpsw$(modext)
 
@@ -23,7 +27,8 @@ all-local.o: $(OBJS)
 
 # 2.6 build
 all-local.ko: @RTNET_KBUILD_ENV@
-all-local.ko: $(libkernel_ticpsw_a_SOURCES) FORCE
+all-local.ko: $(libkernel_ticpsw_a_SOURCES) \
+		FORCE
 	$(RTNET_KBUILD_CMD)
 
 install-exec-local: $(OBJS)
