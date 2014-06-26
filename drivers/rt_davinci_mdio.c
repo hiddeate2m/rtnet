@@ -39,6 +39,8 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 
+#include <rtnet_port.h>
+
 /*
  * This timeout definition is a worst-case ultra defensive measure against
  * unexpected controller lock ups.  Ideally, we should never ever hit this
@@ -88,7 +90,7 @@ struct mdio_platform_data default_pdata = {
 struct davinci_mdio_data {
 	struct mdio_platform_data pdata;
 	struct davinci_mdio_regs __iomem *regs;
-	spinlock_t	lock;
+	rtdm_lock_t	lock;
 	struct clk	*clk;
 	struct device	*dev;
 	struct mii_bus	*bus;
@@ -216,10 +218,10 @@ static int davinci_mdio_read(struct mii_bus *bus, int phy_id, int phy_reg)
 	if (phy_reg & ~PHY_REG_MASK || phy_id & ~PHY_ID_MASK)
 		return -EINVAL;
 
-	spin_lock(&data->lock);
+	rtdm_lock_get(&data->lock);
 
 	if (data->suspended) {
-		spin_unlock(&data->lock);
+		rtdm_lock_put(&data->lock);
 		return -ENODEV;
 	}
 
@@ -246,7 +248,7 @@ static int davinci_mdio_read(struct mii_bus *bus, int phy_id, int phy_reg)
 		break;
 	}
 
-	spin_unlock(&data->lock);
+	rtdm_lock_put(&data->lock);
 
 	return ret;
 }
@@ -261,10 +263,10 @@ static int davinci_mdio_write(struct mii_bus *bus, int phy_id,
 	if (phy_reg & ~PHY_REG_MASK || phy_id & ~PHY_ID_MASK)
 		return -EINVAL;
 
-	spin_lock(&data->lock);
+	rtdm_lock_get(&data->lock);
 
 	if (data->suspended) {
-		spin_unlock(&data->lock);
+		rtdm_lock_put(&data->lock);
 		return -ENODEV;
 	}
 
@@ -286,7 +288,7 @@ static int davinci_mdio_write(struct mii_bus *bus, int phy_id,
 		break;
 	}
 
-	spin_unlock(&data->lock);
+	rtdm_lock_put(&data->lock);
 
 	return 0;
 }
@@ -443,7 +445,7 @@ static int davinci_mdio_suspend(struct device *dev)
 	struct davinci_mdio_data *data = dev_get_drvdata(dev);
 	u32 ctrl;
 
-	spin_lock(&data->lock);
+	rtdm_lock_get(&data->lock);
 
 	/* shutdown the scan state machine */
 	ctrl = __raw_readl(&data->regs->control);
@@ -454,7 +456,7 @@ static int davinci_mdio_suspend(struct device *dev)
 	pm_runtime_put_sync(data->dev);
 
 	data->suspended = true;
-	spin_unlock(&data->lock);
+	rtdm_lock_put(&data->lock);
 
 	return 0;
 }
@@ -464,7 +466,7 @@ static int davinci_mdio_resume(struct device *dev)
 	struct davinci_mdio_data *data = dev_get_drvdata(dev);
 	u32 ctrl;
 
-	spin_lock(&data->lock);
+	rtdm_lock_get(&data->lock);
 	pm_runtime_get_sync(data->dev);
 
 	/* restart the scan state machine */
@@ -473,7 +475,7 @@ static int davinci_mdio_resume(struct device *dev)
 	__raw_writel(ctrl, &data->regs->control);
 
 	data->suspended = false;
-	spin_unlock(&data->lock);
+	rtdm_lock_put(&data->lock);
 
 	return 0;
 }
