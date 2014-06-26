@@ -604,7 +604,7 @@ static void cpsw_ale_timer(rtdm_timer_t *timer)
 int cpsw_ale_set_ageout(struct cpsw_ale *ale, int ageout)
 {
 	rtdm_timer_stop(&ale->timer);
-	ale->ageout = ageout * HZ;
+	ale->ageout = ageout * 1000 * 1000 * 1000;
 	if (ale->ageout) {
 		rtdm_timer_start(&ale->timer, ale->ageout, ale->ageout, RTDM_TIMERMODE_RELATIVE);
 	}
@@ -641,7 +641,7 @@ struct cpsw_ale *cpsw_ale_create(struct cpsw_ale_params *params)
 	rtdm_timer_init(&ale->timer, cpsw_ale_timer, "optional much");
 
 	ale->params = *params;
-	ale->ageout = ale->params.ale_ageout * HZ;
+	ale->ageout = ale->params.ale_ageout * 1000 * 1000 * 1000;
 
 	return ale;
 }
