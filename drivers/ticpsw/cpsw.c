@@ -39,6 +39,17 @@
 #include "cpts.h"
 #include "davinci_cpdma.h"
 
+#define RX_RING_SIZE 8
+
+static inline void rtskb_tx_timestamp(struct rtskb *skb){
+	if (skb->xmit_stamp)
+		*skb->xmit_stamp = cpu_to_be64(rtdm_clock_read() + *skb->xmit_stamp);
+}
+
+static inline int rtskb_tailroom(const struct rtskb *skb){
+	return skb->end - skb->tail;
+}
+
 #define CPSW_DEBUG	(NETIF_MSG_HW		| NETIF_MSG_WOL		| \
 			 NETIF_MSG_DRV		| NETIF_MSG_LINK	| \
 			 NETIF_MSG_IFUP		| NETIF_MSG_INTR	| \
@@ -318,10 +329,9 @@ static inline void slave_write(struct cpsw_slave *slave, u32 val, u32 offset)
 
 struct cpsw_priv {
 	struct platform_device		*pdev;
-	struct net_device		*ndev;
+	struct rtnet_device		*ndev;
 	struct resource			*cpsw_res;
 	struct resource			*cpsw_wr_res;
-	struct napi_struct		napi;
 	struct device			*dev;
 	struct cpsw_platform_data	data;
 	struct cpsw_ss_regs __iomem	*regs;
@@ -344,7 +354,7 @@ struct cpsw_priv {
 	bool irq_enabled;
 	struct cpts cpts;
 
-		
+	struct rtskb_queue skb_pool;
 };
 
 #define napi_to_priv(napi)	container_of(napi, struct cpsw_priv, napi)
@@ -355,6 +365,7 @@ struct cpsw_priv {
 			(func)((priv)->slaves + idx, ##arg);	\
 	} while (0)
 
+#if 0
 static void cpsw_ndo_set_rx_mode(struct net_device *ndev)
 {
 	struct cpsw_priv *priv = netdev_priv(ndev);
@@ -378,6 +389,7 @@ static void cpsw_ndo_set_rx_mode(struct net_device *ndev)
 		}
 	}
 }
+#endif
 
 static void cpsw_intr_enable(struct cpsw_priv *priv)
 {
@@ -399,75 +411,56 @@ static void cpsw_intr_disable(struct cpsw_priv *priv)
 
 void cpsw_tx_handler(void *token, int len, int status)
 {
-	struct sk_buff		*skb = token;
-	struct net_device	*ndev = skb->dev;
-	struct cpsw_priv	*priv = netdev_priv(ndev);
+	struct rtskb		*skb = token;
+	struct rtnet_device	*ndev = skb->rtdev;
+	struct cpsw_priv	*priv = ndev->priv;
 
-	if (unlikely(netif_queue_stopped(ndev)))
-		netif_wake_queue(ndev);
+	if (unlikely(rtnetif_queue_stopped(ndev)))
+		rtnetif_wake_queue(ndev);
 	cpts_tx_timestamp(&priv->cpts, skb);
 	priv->stats.tx_packets++;
 	priv->stats.tx_bytes += len;
-	dev_kfree_skb_any(skb);
+	dev_kfree_rtskb(skb);
 }
 
 void cpsw_rx_handler(void *token, int len, int status)
 {
-	struct sk_buff		*skb = token;
-	struct net_device	*ndev = skb->dev;
-	struct cpsw_priv	*priv = netdev_priv(ndev);
+	struct rtskb		*skb = token;
+	struct rtnet_device	*ndev = skb->rtdev;
+	struct cpsw_priv	*priv = ndev->priv;
 	int			ret = 0;
 
 	/* free and bail if we are shutting down */
-	if (unlikely(!netif_running(ndev)) ||
-			unlikely(!netif_carrier_ok(ndev))) {
-		dev_kfree_skb_any(skb);
+	if (unlikely(!rtnetif_running(ndev)) ||
+			unlikely(!rtnetif_carrier_ok(ndev))) {
+		dev_kfree_rtskb(skb);
 		return;
 	}
 	if (likely(status >= 0)) {
-		skb_put(skb, len);
+		rtskb_put(skb, len);
 		cpts_rx_timestamp(&priv->cpts, skb);
-		skb->protocol = eth_type_trans(skb, ndev);
-		if (priv->data.disable_napi)
-			netif_rx(skb);
-		else
-			netif_receive_skb(skb);
+		skb->protocol = rt_eth_type_trans(skb, ndev);
+		rtnetif_rx(skb);
 		priv->stats.rx_bytes += len;
 		priv->stats.rx_packets++;
 		skb = NULL;
 	}
 
-	if (unlikely(!netif_running(ndev))) {
+	if (unlikely(!rtnetif_running(ndev))) {
 		if (skb)
-			dev_kfree_skb_any(skb);
+			dev_kfree_rtskb(skb);
 		return;
 	}
 
 	if (likely(!skb)) {
-		skb = netdev_alloc_skb_ip_align(ndev, priv->rx_packet_max);
+		skb = dev_alloc_rtskb(priv->rx_packet_max, &priv->skb_pool);
 		if (WARN_ON(!skb))
 			return;
 
 		ret = cpdma_chan_submit(priv->rxch, skb, skb->data,
-					skb_tailroom(skb), GFP_KERNEL);
+					rtskb_tailroom(skb), GFP_KERNEL);
 	}
 	WARN_ON(ret < 0);
-}
-
-static int cpsw_interrupt(rtdm_irq_t *irq_handle)
-{
-	struct cpsw_priv *priv = rtdm_irq_get_arg(irq_handle, struct cpsw_priv);
-
-	if (likely(netif_running(priv->ndev))) {
-		cpsw_intr_disable(priv);
-		if (priv->irq_enabled == true) {
-			cpsw_disable_irq(priv);
-			priv->irq_enabled = false;
-		}
-		napi_schedule(&priv->napi);
-	}
-
-	return IRQ_HANDLED;
 }
 
 static inline int cpsw_get_slave_port(struct cpsw_priv *priv, u32 slave_num)
@@ -478,9 +471,8 @@ static inline int cpsw_get_slave_port(struct cpsw_priv *priv, u32 slave_num)
 		return slave_num;
 }
 
-static int cpsw_poll(struct napi_struct *napi, int budget)
+static int cpsw_poll(struct cpsw_priv *priv, int budget)
 {
-	struct cpsw_priv	*priv = napi_to_priv(napi);
 	int			num_tx, num_rx, num_total_tx, num_total_rx;
 	int			budget_left;
 
@@ -515,7 +507,6 @@ static int cpsw_poll(struct napi_struct *napi, int budget)
 		cpdma_ctlr_eoi(priv->dma, 0x01);
 
 	if ((num_total_rx + num_total_tx) < budget) {
-		napi_complete(napi);
 		cpsw_intr_enable(priv);
 		if (priv->irq_enabled == false) {
 			cpsw_enable_irq(priv);
@@ -523,7 +514,24 @@ static int cpsw_poll(struct napi_struct *napi, int budget)
 		}
 	}
 
+	rtdm_printk("lost packets\n");
 	return num_total_rx + num_total_rx;
+}
+
+static int cpsw_interrupt(rtdm_irq_t *irq_handle)
+{
+	struct cpsw_priv *priv = rtdm_irq_get_arg(irq_handle, struct cpsw_priv);
+
+	if (likely(rtnetif_running(priv->ndev))) {
+		cpsw_intr_disable(priv);
+		if (priv->irq_enabled == true) {
+			cpsw_disable_irq(priv);
+			priv->irq_enabled = false;
+		}
+		cpsw_poll(priv, CPSW_POLL_WEIGHT);
+	}
+
+	return IRQ_HANDLED;
 }
 
 static int cpsw_rx_thresh_pend_irq(rtdm_irq_t *irq_handle)
@@ -651,20 +659,20 @@ static void _cpsw_adjust_link(struct cpsw_slave *slave,
 	slave->mac_control = mac_control;
 }
 
-static void cpsw_adjust_link(struct net_device *ndev)
+static void cpsw_adjust_link(struct rtnet_device *ndev)
 {
-	struct cpsw_priv	*priv = netdev_priv(ndev);
+	struct cpsw_priv	*priv = ndev->priv;
 	bool			link = false;
 
 	for_each_slave(priv, _cpsw_adjust_link, priv, &link);
 
 	if (link) {
-		netif_carrier_on(ndev);
-		if (netif_running(ndev))
-			netif_wake_queue(ndev);
+		rtnetif_carrier_on(ndev);
+		if (rtnetif_running(ndev))
+			rtnetif_wake_queue(ndev);
 	} else {
-		netif_carrier_off(ndev);
-		netif_stop_queue(ndev);
+		rtnetif_carrier_off(ndev);
+		rtnetif_stop_queue(ndev);
 	}
 }
 
@@ -711,7 +719,7 @@ static void cpsw_slave_open(struct cpsw_slave *slave, struct cpsw_priv *priv)
 	cpsw_ale_add_mcast(priv->ale, priv->ndev->broadcast,
 			   1 << slave_port, 0, ALE_MCAST_FWD_2);
 
-	slave->phy = phy_connect(priv->ndev, slave->data->phy_id,
+	slave->phy = phy_connect((struct net_device*) priv->ndev, slave->data->phy_id,
 				 &cpsw_adjust_link, 0, slave->data->phy_if);
 	if (IS_ERR(slave->phy)) {
 		dev_err(priv->dev, "phy %s not found on slave %d\n",
@@ -746,14 +754,14 @@ static void cpsw_init_host_port(struct cpsw_priv *priv)
 			   1 << priv->host_port, 0, ALE_MCAST_FWD_2);
 }
 
-static int cpsw_ndo_open(struct net_device *ndev)
+static int cpsw_ndo_open(struct rtnet_device *ndev)
 {
-	struct cpsw_priv *priv = netdev_priv(ndev);
+	struct cpsw_priv *priv = ndev->priv;
 	int i, ret;
 	u32 reg;
 
 	cpsw_intr_disable(priv);
-	netif_carrier_off(ndev);
+	rtnetif_carrier_off(ndev);
 
 	pm_runtime_get_sync(&priv->pdev->dev);
 
@@ -781,15 +789,14 @@ static int cpsw_ndo_open(struct net_device *ndev)
 		priv->data.rx_descs = 128;
 
 	for (i = 0; i < priv->data.rx_descs; i++) {
-		struct sk_buff *skb;
+		struct rtskb *skb;
 
 		ret = -ENOMEM;
-		skb = netdev_alloc_skb_ip_align(priv->ndev,
-						priv->rx_packet_max);
+		skb = dev_alloc_rtskb(priv->rx_packet_max, &priv->skb_pool);
 		if (!skb)
 			break;
 		ret = cpdma_chan_submit(priv->rxch, skb, skb->data,
-					skb_tailroom(skb), GFP_KERNEL);
+					rtskb_tailroom(skb), GFP_KERNEL);
 		if (WARN_ON(ret < 0))
 			break;
 	}
@@ -798,8 +805,6 @@ static int cpsw_ndo_open(struct net_device *ndev)
 
 	cpdma_ctlr_start(priv->dma);
 	cpsw_intr_enable(priv);
-	if (!priv->data.disable_napi)
-		napi_enable(&priv->napi);
 	cpdma_ctlr_eoi(priv->dma, 0x01);
 	cpdma_ctlr_eoi(priv->dma, 0x02);
 
@@ -815,19 +820,17 @@ static void cpsw_slave_stop(struct cpsw_slave *slave, struct cpsw_priv *priv)
 	slave->phy = NULL;
 }
 
-static int cpsw_ndo_stop(struct net_device *ndev)
+static int cpsw_ndo_stop(struct rtnet_device *ndev)
 {
-	struct cpsw_priv *priv = netdev_priv(ndev);
+	struct cpsw_priv *priv = ndev->priv;
 
 	cpsw_info(priv, ifdown, "shutting down cpsw device\n");
 	if (priv->irq_enabled == true) {
 		cpsw_disable_irq(priv);
 		priv->irq_enabled = false;
 	}
-	netif_stop_queue(priv->ndev);
-	if (!priv->data.disable_napi)
-		napi_disable(&priv->napi);
-	netif_carrier_off(priv->ndev);
+	rtnetif_stop_queue(priv->ndev);
+	rtnetif_carrier_off(priv->ndev);
 	cpsw_intr_disable(priv);
 	cpdma_ctlr_int_ctrl(priv->dma, false);
 	cpdma_ctlr_stop(priv->dma);
@@ -837,24 +840,24 @@ static int cpsw_ndo_stop(struct net_device *ndev)
 	return 0;
 }
 
-static netdev_tx_t cpsw_ndo_start_xmit(struct sk_buff *skb,
-				       struct net_device *ndev)
+static netdev_tx_t cpsw_ndo_start_xmit(struct rtskb *skb,
+				       struct rtnet_device *ndev)
 {
-	struct cpsw_priv *priv = netdev_priv(ndev);
+	struct cpsw_priv *priv = ndev->priv;
 	int ret;
 
-	ndev->trans_start = jiffies;
-
-	if (skb_padto(skb, CPSW_MIN_PACKET_SIZE)) {
+	if (rtskb_padto(skb, CPSW_MIN_PACKET_SIZE)) {
 		cpsw_err(priv, tx_err, "packet pad failed\n");
 		priv->stats.tx_dropped++;
 		return NETDEV_TX_OK;
 	}
 
+	#if 0
 	if (skb_shinfo(skb)->tx_flags & SKBTX_HW_TSTAMP && priv->cpts.tx_enable)
 		skb_shinfo(skb)->tx_flags |= SKBTX_IN_PROGRESS;
+	#endif
 
-	skb_tx_timestamp(skb);
+	rtskb_tx_timestamp(skb);
 
 	ret = cpdma_chan_submit(priv->txch, skb, skb->data,
 				skb->len, GFP_KERNEL);
@@ -866,10 +869,11 @@ static netdev_tx_t cpsw_ndo_start_xmit(struct sk_buff *skb,
 	return NETDEV_TX_OK;
 fail:
 	priv->stats.tx_dropped++;
-	netif_stop_queue(ndev);
+	rtnetif_stop_queue(ndev);
 	return NETDEV_TX_BUSY;
 }
 
+#if 0
 static void cpsw_ndo_change_rx_flags(struct net_device *ndev, int flags)
 {
 	/*
@@ -892,6 +896,7 @@ static void cpsw_ndo_change_rx_flags(struct net_device *ndev, int flags)
 	if ((flags & IFF_ALLMULTI) && !(ndev->flags & IFF_ALLMULTI))
 		dev_err(&ndev->dev, "multicast traffic cannot be filtered!\n");
 }
+#endif
 
 #ifdef CONFIG_TI_CPTS
 
@@ -1004,9 +1009,10 @@ static int cpsw_hwtstamp_ioctl(struct net_device *dev, struct ifreq *ifr)
 
 #endif /*CONFIG_TI_CPTS*/
 
+#if 0
 static int cpsw_ndo_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
 {
-	if (!netif_running(dev))
+	if (!rtnetif_running(dev))
 		return -EINVAL;
 
 #ifdef CONFIG_TI_CPTS
@@ -1015,7 +1021,9 @@ static int cpsw_ndo_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
 #endif
 	return -ENOTSUPP;
 }
+#endif
 
+#if 0
 static void cpsw_ndo_tx_timeout(struct net_device *ndev)
 {
 	struct cpsw_priv *priv = netdev_priv(ndev);
@@ -1031,10 +1039,11 @@ static void cpsw_ndo_tx_timeout(struct net_device *ndev)
 	cpdma_ctlr_eoi(priv->dma, 0x01);
 	cpdma_ctlr_eoi(priv->dma, 0x02);
 }
+#endif
 
-static struct net_device_stats *cpsw_ndo_get_stats(struct net_device *ndev)
+static struct net_device_stats *cpsw_ndo_get_stats(struct rtnet_device *ndev)
 {
-	struct cpsw_priv *priv = netdev_priv(ndev);
+	struct cpsw_priv *priv = ndev->priv;
 	return &priv->stats;
 }
 
@@ -1059,6 +1068,7 @@ static void cpsw_ndo_poll_controller(struct net_device *ndev)
 }
 #endif
 
+#if 0
 static struct net_device_ops cpsw_netdev_ops = {
 	.ndo_open		= cpsw_ndo_open,
 	.ndo_stop		= cpsw_ndo_stop,
@@ -1074,6 +1084,7 @@ static struct net_device_ops cpsw_netdev_ops = {
 	.ndo_poll_controller	= cpsw_ndo_poll_controller,
 #endif
 };
+#endif
 
 static void cpsw_get_drvinfo(struct net_device *ndev,
 			     struct ethtool_drvinfo *info)
@@ -1293,7 +1304,7 @@ static rtdm_irq_handler_t cpsw_get_irq_handler(struct cpsw_priv *priv, int irq_i
 static int cpsw_probe(struct platform_device *pdev)
 {
 	struct cpsw_platform_data	*data = pdev->dev.platform_data;
-	struct net_device		*ndev;
+	struct rtnet_device		*ndev;
 	struct cpsw_priv		*priv;
 	struct cpdma_params		dma_params;
 	struct cpsw_ale_params		ale_params;
@@ -1303,20 +1314,29 @@ static int cpsw_probe(struct platform_device *pdev)
 	rtdm_irq_handler_t		irqh;
 	int ret = 0, i, j, k = 0;
 
-	ndev = alloc_etherdev(sizeof(struct cpsw_priv));
-	if (!ndev) {
-		pr_err("error allocating net_device\n");
+	ndev = rt_alloc_etherdev(sizeof(struct cpsw_priv));
+	if (ndev == NULL){
 		return -ENOMEM;
 	}
+	rtdev_alloc_name(ndev, "rteth%d");
+	rt_rtdev_connect(ndev, &RTDEV_manager);
+	RTNET_SET_MODULE_OWNER(ndev);
+	ndev->vers = RTDEV_VERS_2_0;
 
-	platform_set_drvdata(pdev, ndev);
-	priv = netdev_priv(ndev);
+	priv = ndev->priv;
+	platform_set_drvdata(pdev, ndev);	
 	priv->pdev = pdev;
 	priv->ndev = ndev;
-	priv->dev  = &ndev->dev;
+	priv->dev  = &pdev->dev;
 	priv->msg_enable = netif_msg_init(debug_level, CPSW_DEBUG);
 	priv->rx_packet_max = max(rx_packet_max, 128);
 	priv->irq_enabled = false;
+	
+	if (rtskb_pool_init(&priv->skb_pool, RX_RING_SIZE*2) < RX_RING_SIZE*2) {
+		rtskb_pool_release(&priv->skb_pool);
+		ret = -ENOMEM;
+		goto clean_real_ndev_ret;
+	}
 
 	/*
 	 * This may be required here for child devices.
@@ -1469,7 +1489,7 @@ static int cpsw_probe(struct platform_device *pdev)
 		goto clean_dma_ret;
 	}
 
-	ale_params.dev			= &ndev->dev;
+	ale_params.dev			= &pdev->dev;
 	ale_params.ale_ageout		= ale_ageout;
 	ale_params.ale_entries		= data->ale_entries;
 	ale_params.ale_ports		= data->slaves;
@@ -1513,15 +1533,17 @@ static int cpsw_probe(struct platform_device *pdev)
 
 	ndev->flags |= IFF_ALLMULTI;	/* see cpsw_ndo_change_rx_flags() */
 
+	#if 0
 	ndev->netdev_ops = &cpsw_netdev_ops;
 	SET_ETHTOOL_OPS(ndev, &cpsw_ethtool_ops);
-
-	if (!priv->data.disable_napi)
-		netif_napi_add(ndev, &priv->napi, cpsw_poll, CPSW_POLL_WEIGHT);
+	#endif
+	ndev->open		= cpsw_ndo_open;
+	ndev->hard_start_xmit 	= cpsw_ndo_start_xmit;
+	ndev->get_stats    	= cpsw_ndo_get_stats;
+	ndev->stop 		= cpsw_ndo_stop;
 
 	/* register the network device */
-	SET_NETDEV_DEV(ndev, &pdev->dev);
-	ret = register_netdev(ndev);
+	ret = rt_register_rtnetdev(ndev);
 	if (ret) {
 		dev_err(priv->dev, "error registering net device\n");
 		ret = -ENODEV;
@@ -1538,7 +1560,8 @@ static int cpsw_probe(struct platform_device *pdev)
 	return 0;
 
 clean_irq_ret:
-	free_irq(ndev->irq, priv);
+	for(i = 0; i < priv->num_irqs; i++)
+		rtdm_irq_free(&priv->irqs_table[i]);
 clean_ale_ret:
 	cpsw_ale_destroy(priv->ale);
 clean_dma_ret:
@@ -1561,20 +1584,25 @@ clean_slave_ret:
 	pm_runtime_disable(&pdev->dev);
 	kfree(priv->slaves);
 clean_ndev_ret:
-	free_netdev(ndev);
+	rtskb_pool_release(&priv->skb_pool);
+clean_real_ndev_ret:
+	rt_rtdev_disconnect(ndev);
+	rtdev_free(ndev);
 	return ret;
 }
 
 static int cpsw_remove(struct platform_device *pdev)
 {
-	struct net_device *ndev = platform_get_drvdata(pdev);
-	struct cpsw_priv *priv = netdev_priv(ndev);
+	struct rtnet_device *ndev = platform_get_drvdata(pdev);
+	struct cpsw_priv *priv = ndev->priv;
+	int i;
 
 	pr_info("removing device");
 	platform_set_drvdata(pdev, NULL);
 
 	cpts_unregister(&priv->cpts);
-	free_irq(ndev->irq, priv);
+	for(i = 0; i < priv->num_irqs; i++)
+		rtdm_irq_free(&priv->irqs_table[i]);
 	cpsw_ale_destroy(priv->ale);
 	cpdma_chan_destroy(priv->txch);
 	cpdma_chan_destroy(priv->rxch);
@@ -1588,7 +1616,9 @@ static int cpsw_remove(struct platform_device *pdev)
 	pm_runtime_disable(&pdev->dev);
 	clk_put(priv->clk);
 	kfree(priv->slaves);
-	free_netdev(ndev);
+	rtskb_pool_release(&priv->skb_pool);
+	rt_rtdev_disconnect(ndev);
+	rtdev_free(ndev);
 
 	return 0;
 }
@@ -1596,9 +1626,9 @@ static int cpsw_remove(struct platform_device *pdev)
 static int cpsw_suspend(struct device *dev)
 {
 	struct platform_device	*pdev = to_platform_device(dev);
-	struct net_device	*ndev = platform_get_drvdata(pdev);
+	struct rtnet_device	*ndev = platform_get_drvdata(pdev);
 
-	if (netif_running(ndev))
+	if (rtnetif_running(ndev))
 		cpsw_ndo_stop(ndev);
 	pm_runtime_put_sync(&pdev->dev);
 
@@ -1608,10 +1638,10 @@ static int cpsw_suspend(struct device *dev)
 static int cpsw_resume(struct device *dev)
 {
 	struct platform_device	*pdev = to_platform_device(dev);
-	struct net_device	*ndev = platform_get_drvdata(pdev);
+	struct rtnet_device	*ndev = platform_get_drvdata(pdev);
 
 	pm_runtime_get_sync(&pdev->dev);
-	if (netif_running(ndev))
+	if (rtnetif_running(ndev))
 		cpsw_ndo_open(ndev);
 	return 0;
 }
@@ -1652,4 +1682,4 @@ module_exit(cpsw_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Cyril Chemparathy <cyril@ti.com>");
 MODULE_AUTHOR("Mugunthan V N <mugunthanvnm@ti.com>");
-MODULE_DESCRIPTION("TI CPSW Ethernet driver");
+MODULE_DESCRIPTION("RT TI CPSW Ethernet driver");

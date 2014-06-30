@@ -514,4 +514,4 @@ static void __exit davinci_mdio_exit(void)
 module_exit(davinci_mdio_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("DaVinci MDIO driver");
+MODULE_DESCRIPTION("RT DaVinci MDIO driver");
