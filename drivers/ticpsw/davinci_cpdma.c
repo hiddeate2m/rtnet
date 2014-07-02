@@ -739,8 +739,8 @@ static int __cpdma_chan_process(struct cpdma_chan *chan)
 
 	rtdm_printk("__cpdma_chan_process(%x)\n", chan);
 	status = -ENOENT;
+	
 	rtdm_lock_get_irqsave(&chan->lock, context);
-
 #if 0
 	desc = chan->head;
 	if (!desc) {
@@ -773,18 +773,18 @@ static int __cpdma_chan_process(struct cpdma_chan *chan)
 
 	__cpdma_chan_free(chan, desc, outlen, status);
 	return status;
-#endif
-unlock_ret:
-	rtdm_lock_put_irqrestore(&chan->lock, context);
-	return status;
 
+unlock_ret:
+#endif	
+	rtdm_lock_put_irqrestore(&chan->lock, context);
+
+	return status;
 }
 
 int cpdma_chan_process(struct cpdma_chan *chan, int quota)
 {
-	rtdm_printk("cpdma_chan_process(%x, %d)\n", chan, quota);
 	int used = 0, ret = 0;
-
+	
 	if (chan->state != CPDMA_STATE_ACTIVE)
 		return -EINVAL;
 
