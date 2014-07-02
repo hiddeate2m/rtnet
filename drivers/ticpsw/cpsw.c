@@ -50,6 +50,14 @@ static inline int rtskb_tailroom(const struct rtskb *skb){
 	return skb->end - skb->tail;
 }
 
+static inline struct rtskb *dev_alloc_rtskb_ip_align(unsigned int size, struct rtskb_queue *pool){
+	struct rtskb *skb = dev_alloc_rtskb(size + NET_IP_ALIGN, pool);
+
+	if(NET_IP_ALIGN && skb)
+		rtskb_reserve(skb, NET_IP_ALIGN);
+	return skb;
+}
+
 #define CPSW_DEBUG	(NETIF_MSG_HW		| NETIF_MSG_WOL		| \
 			 NETIF_MSG_DRV		| NETIF_MSG_LINK	| \
 			 NETIF_MSG_IFUP		| NETIF_MSG_INTR	| \
@@ -453,7 +461,7 @@ void cpsw_rx_handler(void *token, int len, int status)
 	}
 
 	if (likely(!skb)) {
-		skb = dev_alloc_rtskb(priv->rx_packet_max, &priv->skb_pool);
+		skb = dev_alloc_rtskb_ip_align(priv->rx_packet_max, &priv->skb_pool);
 		if (WARN_ON(!skb))
 			return;
 
@@ -471,6 +479,7 @@ static inline int cpsw_get_slave_port(struct cpsw_priv *priv, u32 slave_num)
 		return slave_num;
 }
 
+#if 0
 static int cpsw_poll(struct cpsw_priv *priv, int budget)
 {
 	int			num_tx, num_rx, num_total_tx, num_total_rx;
@@ -517,7 +526,9 @@ static int cpsw_poll(struct cpsw_priv *priv, int budget)
 	rtdm_printk("lost packets\n");
 	return num_total_rx + num_total_rx;
 }
+#endif
 
+#if 0
 static int cpsw_interrupt(rtdm_irq_t *irq_handle)
 {
 	struct cpsw_priv *priv = rtdm_irq_get_arg(irq_handle, struct cpsw_priv);
@@ -533,13 +544,10 @@ static int cpsw_interrupt(rtdm_irq_t *irq_handle)
 
 	return IRQ_HANDLED;
 }
+#endif
 
 static int cpsw_rx_thresh_pend_irq(rtdm_irq_t *irq_handle)
 {
-	struct cpsw_priv *priv = rtdm_irq_get_arg(irq_handle, struct cpsw_priv);
-
-	(void)priv;
-
 	/* not handling this interrupt yet */
 	return IRQ_HANDLED;
 }
@@ -554,9 +562,11 @@ static int cpsw_rx_pend_irq(rtdm_irq_t *irq_handle)
 	if (rx_stat == 0)
 		return IRQ_NONE;
 
+	rtdm_printk("cpsw_rx_pend_irq: %d\n", rx_stat);
+
 	total_rx = 0;
 	while ((num_rx = cpdma_chan_process(priv->rxch,
-					priv->data.rx_descs)) > 0)
+					RX_RING_SIZE)) > 0)
 		total_rx += num_rx;
 
 	cpdma_ctlr_eoi(priv->dma, 0x01);
@@ -574,6 +584,8 @@ static int cpsw_tx_pend_irq(rtdm_irq_t *irq_handle)
 	if (tx_stat == 0)
 		return IRQ_NONE;
 
+	rtdm_printk("cpsw_tx_pend_irq: %d\n", tx_stat);
+
 	total_tx = 0;
 	while ((num_tx = cpdma_chan_process(priv->txch, 128)) > 0)
 		total_tx += num_tx;
@@ -585,9 +597,6 @@ static int cpsw_tx_pend_irq(rtdm_irq_t *irq_handle)
 
 static int cpsw_misc_pend_irq(rtdm_irq_t *irq_handle)
 {
-	struct cpsw_priv *priv = rtdm_irq_get_arg(irq_handle, struct cpsw_priv);
-
-	(void)priv;
 	/* not handling this interrupt yet */
 	return IRQ_HANDLED;
 }
@@ -659,8 +668,9 @@ static void _cpsw_adjust_link(struct cpsw_slave *slave,
 	slave->mac_control = mac_control;
 }
 
-static void cpsw_adjust_link(struct rtnet_device *ndev)
+static void cpsw_adjust_link(struct net_device *ndev_)
 {
+	struct rtnet_device	*ndev = (struct rtnet_device *)ndev_;
 	struct cpsw_priv	*priv = ndev->priv;
 	bool			link = false;
 
@@ -785,14 +795,11 @@ static int cpsw_ndo_open(struct rtnet_device *ndev)
 	/* enable statistics collection only on the host port */
 	__raw_writel(0x7, &priv->regs->stat_port_en);
 
-	if (WARN_ON(!priv->data.rx_descs))
-		priv->data.rx_descs = 128;
-
-	for (i = 0; i < priv->data.rx_descs; i++) {
+	for (i = 0; i < RX_RING_SIZE; i++) {
 		struct rtskb *skb;
 
 		ret = -ENOMEM;
-		skb = dev_alloc_rtskb(priv->rx_packet_max, &priv->skb_pool);
+		skb = dev_alloc_rtskb_ip_align(priv->rx_packet_max, &priv->skb_pool);
 		if (!skb)
 			break;
 		ret = cpdma_chan_submit(priv->rxch, skb, skb->data,
@@ -1047,6 +1054,7 @@ static struct net_device_stats *cpsw_ndo_get_stats(struct rtnet_device *ndev)
 	return &priv->stats;
 }
 
+#if 0
 #ifdef CONFIG_NET_POLL_CONTROLLER
 static void cpsw_ndo_poll_controller(struct net_device *ndev)
 {
@@ -1066,6 +1074,7 @@ static void cpsw_ndo_poll_controller(struct net_device *ndev)
 	cpdma_ctlr_eoi(priv->dma, 0x01);
 	cpdma_ctlr_eoi(priv->dma, 0x02);
 }
+#endif
 #endif
 
 #if 0
@@ -1225,15 +1234,19 @@ static int cpsw_probe_dt(struct cpsw_platform_data *data,
 	}
 	data->bd_ram_size = prop;
 
+#if 0
 	if (of_property_read_bool(node, "disable-napi"))
 		data->disable_napi = 1;
+#endif
 
+#if 0
 	if (of_property_read_u32(node, "rx_descs", &prop)) {
 		pr_err("Missing rx_descs property in the DT.\n");
 		ret = -EINVAL;
 		goto error_ret;
 	}
 	data->rx_descs = prop;
+#endif
 
 	if (of_property_read_u32(node, "mac_control", &prop)) {
 		pr_err("Missing mac_control property in the DT.\n");
@@ -1295,8 +1308,10 @@ static rtdm_irq_handler_t cpsw_get_irq_handler(struct cpsw_priv *priv, int irq_i
 	if ((unsigned int)irq_idx >= 4)
 		return NULL;
 
+#if 0
 	if (!priv->data.disable_napi)
 		return cpsw_interrupt;
+#endif
 
 	return non_napi_irq_tab[irq_idx];
 }
@@ -1508,8 +1523,10 @@ static int cpsw_probe(struct platform_device *pdev)
 		goto clean_ale_ret;
 	}
 
+#if 0
 	dev_info(&pdev->dev, "NAPI %s\n", priv->data.disable_napi ?
 			"disabled" : "enabled");
+#endif
 
 	/* get interrupts */
 	j = k = 0;
