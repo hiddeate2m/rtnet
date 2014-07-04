@@ -50,14 +50,6 @@ static inline int rtskb_tailroom(const struct rtskb *skb){
 	return skb->end - skb->tail;
 }
 
-static inline struct rtskb *dev_alloc_rtskb_ip_align(unsigned int size, struct rtskb_queue *pool){
-	struct rtskb *skb = dev_alloc_rtskb(size + NET_IP_ALIGN, pool);
-
-	if(NET_IP_ALIGN && skb)
-		rtskb_reserve(skb, NET_IP_ALIGN);
-	return skb;
-}
-
 #define CPSW_DEBUG	(NETIF_MSG_HW		| NETIF_MSG_WOL		| \
 			 NETIF_MSG_DRV		| NETIF_MSG_LINK	| \
 			 NETIF_MSG_IFUP		| NETIF_MSG_INTR	| \
@@ -365,6 +357,18 @@ struct cpsw_priv {
 	struct rtskb_queue skb_pool;
 };
 
+static inline struct rtskb *dev_alloc_rtskb_ip_align(struct rtnet_device *ndev, unsigned int size){
+	struct cpsw_priv *priv = ndev->priv;
+	struct rtskb_queue *pool = &priv->skb_pool;
+	struct rtskb *skb = dev_alloc_rtskb(size + NET_IP_ALIGN, pool);
+
+	if(skb)
+		skb->rtdev = ndev;
+	if(NET_IP_ALIGN && skb)
+		rtskb_reserve(skb, NET_IP_ALIGN);
+	return skb;
+}
+
 #define napi_to_priv(napi)	container_of(napi, struct cpsw_priv, napi)
 #define for_each_slave(priv, func, arg...)			\
 	do {							\
@@ -423,6 +427,8 @@ void cpsw_tx_handler(void *token, int len, int status)
 	struct rtnet_device	*ndev = skb->rtdev;
 	struct cpsw_priv	*priv = ndev->priv;
 
+	rtdm_printk("cpsw_tx_handler(%x, %d, %d)\n", token, len, status);
+
 	if (unlikely(rtnetif_queue_stopped(ndev)))
 		rtnetif_wake_queue(ndev);
 	cpts_tx_timestamp(&priv->cpts, skb);
@@ -438,12 +444,17 @@ void cpsw_rx_handler(void *token, int len, int status)
 	struct cpsw_priv	*priv = ndev->priv;
 	int			ret = 0;
 
+	rtdm_printk("cpsw_rx_handler(%x, %d, %d)\n", token, len, status);
+	rtdm_printk("skb: %x; ndev: %x; priv: %x\n", skb, ndev, priv);
+
 	/* free and bail if we are shutting down */
 	if (unlikely(!rtnetif_running(ndev)) ||
 			unlikely(!rtnetif_carrier_ok(ndev))) {
+		rtdm_printk("1\n");
 		dev_kfree_rtskb(skb);
 		return;
 	}
+#if 0 
 	if (likely(status >= 0)) {
 		rtskb_put(skb, len);
 		cpts_rx_timestamp(&priv->cpts, skb);
@@ -461,7 +472,7 @@ void cpsw_rx_handler(void *token, int len, int status)
 	}
 
 	if (likely(!skb)) {
-		skb = dev_alloc_rtskb_ip_align(priv->rx_packet_max, &priv->skb_pool);
+		skb = dev_alloc_rtskb_ip_align(ndev, priv->rx_packet_max);
 		if (WARN_ON(!skb))
 			return;
 
@@ -469,6 +480,7 @@ void cpsw_rx_handler(void *token, int len, int status)
 					rtskb_tailroom(skb), GFP_KERNEL);
 	}
 	WARN_ON(ret < 0);
+#endif
 }
 
 static inline int cpsw_get_slave_port(struct cpsw_priv *priv, u32 slave_num)
@@ -565,8 +577,8 @@ static int cpsw_rx_pend_irq(rtdm_irq_t *irq_handle)
 	rtdm_printk("cpsw_rx_pend_irq: %d\n", rx_stat);
 
 	total_rx = 0;
-	while ((num_rx = cpdma_chan_process(priv->rxch,
-					RX_RING_SIZE)) > 0)
+	while ((num_rx = cpdma_chan_process(priv->rxch, RX_RING_SIZE)) > 0 &&
+		total_rx <= RX_RING_SIZE)
 		total_rx += num_rx;
 
 	cpdma_ctlr_eoi(priv->dma, 0x01);
@@ -587,7 +599,8 @@ static int cpsw_tx_pend_irq(rtdm_irq_t *irq_handle)
 	rtdm_printk("cpsw_tx_pend_irq: %d\n", tx_stat);
 
 	total_tx = 0;
-	while ((num_tx = cpdma_chan_process(priv->txch, 128)) > 0)
+	while ((num_tx = cpdma_chan_process(priv->txch, 128)) > 0 &&
+		total_tx <= 128)
 		total_tx += num_tx;
 
 	cpdma_ctlr_eoi(priv->dma, 0x02);
@@ -799,7 +812,7 @@ static int cpsw_ndo_open(struct rtnet_device *ndev)
 		struct rtskb *skb;
 
 		ret = -ENOMEM;
-		skb = dev_alloc_rtskb_ip_align(priv->rx_packet_max, &priv->skb_pool);
+		skb = dev_alloc_rtskb_ip_align(ndev, priv->rx_packet_max);
 		if (!skb)
 			break;
 		ret = cpdma_chan_submit(priv->rxch, skb, skb->data,
