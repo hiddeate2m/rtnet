@@ -328,6 +328,7 @@ static inline void slave_write(struct cpsw_slave *slave, u32 val, u32 offset)
 }
 
 struct cpsw_priv {
+	rtdm_lock_t			lock;
 	struct platform_device		*pdev;
 	struct rtnet_device		*ndev;
 	struct resource			*cpsw_res;
@@ -364,8 +365,8 @@ static inline struct rtskb *dev_alloc_rtskb_ip_align(struct rtnet_device *ndev, 
 
 	if(skb)
 		skb->rtdev = ndev;
-	if(NET_IP_ALIGN && skb)
-		rtskb_reserve(skb, NET_IP_ALIGN);
+	//if(NET_IP_ALIGN && skb)
+	//	rtskb_reserve(skb, NET_IP_ALIGN);
 	return skb;
 }
 
@@ -427,7 +428,7 @@ void cpsw_tx_handler(void *token, int len, int status)
 	struct rtnet_device	*ndev = skb->rtdev;
 	struct cpsw_priv	*priv = ndev->priv;
 
-	rtdm_printk("cpsw_tx_handler(%x, %d, %d)\n", token, len, status);
+	//rtdm_printk("cpsw_tx_handler(%x, %d, %d)\n", token, len, status);
 
 	if (unlikely(rtnetif_queue_stopped(ndev)))
 		rtnetif_wake_queue(ndev);
@@ -443,18 +444,14 @@ void cpsw_rx_handler(void *token, int len, int status)
 	struct rtnet_device	*ndev = skb->rtdev;
 	struct cpsw_priv	*priv = ndev->priv;
 	int			ret = 0;
-
-	rtdm_printk("cpsw_rx_handler(%x, %d, %d)\n", token, len, status);
-	rtdm_printk("skb: %x; ndev: %x; priv: %x\n", skb, ndev, priv);
-
+	
 	/* free and bail if we are shutting down */
 	if (unlikely(!rtnetif_running(ndev)) ||
 			unlikely(!rtnetif_carrier_ok(ndev))) {
-		rtdm_printk("1\n");
 		dev_kfree_rtskb(skb);
 		return;
 	}
-#if 0 
+
 	if (likely(status >= 0)) {
 		rtskb_put(skb, len);
 		cpts_rx_timestamp(&priv->cpts, skb);
@@ -480,7 +477,6 @@ void cpsw_rx_handler(void *token, int len, int status)
 					rtskb_tailroom(skb), GFP_KERNEL);
 	}
 	WARN_ON(ret < 0);
-#endif
 }
 
 static inline int cpsw_get_slave_port(struct cpsw_priv *priv, u32 slave_num)
@@ -561,7 +557,7 @@ static int cpsw_interrupt(rtdm_irq_t *irq_handle)
 static int cpsw_rx_thresh_pend_irq(rtdm_irq_t *irq_handle)
 {
 	/* not handling this interrupt yet */
-	return IRQ_HANDLED;
+	return RTDM_IRQ_HANDLED;
 }
 
 static int cpsw_rx_pend_irq(rtdm_irq_t *irq_handle)
@@ -569,21 +565,28 @@ static int cpsw_rx_pend_irq(rtdm_irq_t *irq_handle)
 	struct cpsw_priv *priv = rtdm_irq_get_arg(irq_handle, struct cpsw_priv);
 	int num_rx, total_rx;
 	u32 rx_stat;
+	rtdm_lockctx_t context;
 
 	rx_stat = __raw_readl(&priv->wr_regs->c0_rx_stat) & 0xff;
 	if (rx_stat == 0)
-		return IRQ_NONE;
+		return RTDM_IRQ_NONE;
 
-	rtdm_printk("cpsw_rx_pend_irq: %d\n", rx_stat);
+	//rtdm_printk("cpsw_rx_pend_irq: %d\n", rx_stat);
+
+	rtdm_lock_get_irqsave(&priv->lock, context);
 
 	total_rx = 0;
-	while ((num_rx = cpdma_chan_process(priv->rxch, RX_RING_SIZE)) > 0 &&
-		total_rx <= RX_RING_SIZE)
+	while ((num_rx = cpdma_chan_process(priv->rxch, RX_RING_SIZE)) > 0)
 		total_rx += num_rx;
 
 	cpdma_ctlr_eoi(priv->dma, 0x01);
 
-	return IRQ_HANDLED;
+	rtdm_lock_put_irqrestore(&priv->lock, context);
+
+	if(total_rx > 0)
+		rt_mark_stack_mgr(priv->ndev);
+
+	return RTDM_IRQ_HANDLED;
 }
 
 static int cpsw_tx_pend_irq(rtdm_irq_t *irq_handle)
@@ -594,24 +597,23 @@ static int cpsw_tx_pend_irq(rtdm_irq_t *irq_handle)
 
 	tx_stat = __raw_readl(&priv->wr_regs->c0_tx_stat) & 0xff;
 	if (tx_stat == 0)
-		return IRQ_NONE;
+		return RTDM_IRQ_NONE;
 
-	rtdm_printk("cpsw_tx_pend_irq: %d\n", tx_stat);
+	//rtdm_printk("cpsw_tx_pend_irq: %d\n", tx_stat);
 
 	total_tx = 0;
-	while ((num_tx = cpdma_chan_process(priv->txch, 128)) > 0 &&
-		total_tx <= 128)
+	while ((num_tx = cpdma_chan_process(priv->txch, 128)) > 0)
 		total_tx += num_tx;
 
 	cpdma_ctlr_eoi(priv->dma, 0x02);
 
-	return IRQ_HANDLED;
+	return RTDM_IRQ_HANDLED;
 }
 
 static int cpsw_misc_pend_irq(rtdm_irq_t *irq_handle)
 {
 	/* not handling this interrupt yet */
-	return IRQ_HANDLED;
+	return RTDM_IRQ_HANDLED;
 }
 
 static inline void soft_reset(const char *module, void __iomem *reg)
@@ -866,7 +868,7 @@ static netdev_tx_t cpsw_ndo_start_xmit(struct rtskb *skb,
 	struct cpsw_priv *priv = ndev->priv;
 	int ret;
 
-	if (rtskb_padto(skb, CPSW_MIN_PACKET_SIZE)) {
+	if (!rtskb_padto(skb, CPSW_MIN_PACKET_SIZE)) {
 		cpsw_err(priv, tx_err, "packet pad failed\n");
 		priv->stats.tx_dropped++;
 		return NETDEV_TX_OK;
@@ -1353,6 +1355,7 @@ static int cpsw_probe(struct platform_device *pdev)
 
 	priv = ndev->priv;
 	platform_set_drvdata(pdev, ndev);	
+	rtdm_lock_init(&priv->lock);
 	priv->pdev = pdev;
 	priv->ndev = ndev;
 	priv->dev  = &pdev->dev;
@@ -1541,6 +1544,7 @@ static int cpsw_probe(struct platform_device *pdev)
 			"disabled" : "enabled");
 #endif
 
+	rt_stack_connect(ndev, &STACK_manager);
 	/* get interrupts */
 	j = k = 0;
 	while ((res = platform_get_resource(pdev, IORESOURCE_IRQ, j++))) {
@@ -1592,6 +1596,7 @@ static int cpsw_probe(struct platform_device *pdev)
 clean_irq_ret:
 	for(i = 0; i < priv->num_irqs; i++)
 		rtdm_irq_free(&priv->irqs_table[i]);
+	rt_stack_disconnect(ndev);
 clean_ale_ret:
 	cpsw_ale_destroy(priv->ale);
 clean_dma_ret:
@@ -1633,6 +1638,7 @@ static int cpsw_remove(struct platform_device *pdev)
 	cpts_unregister(&priv->cpts);
 	for(i = 0; i < priv->num_irqs; i++)
 		rtdm_irq_free(&priv->irqs_table[i]);
+	rt_stack_disconnect(ndev);
 	cpsw_ale_destroy(priv->ale);
 	cpdma_chan_destroy(priv->txch);
 	cpdma_chan_destroy(priv->rxch);

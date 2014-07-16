@@ -719,7 +719,7 @@ static void __cpdma_chan_free(struct cpdma_chan *chan,
 	int				origlen;
 	void				*token;
 
-	rtdm_printk("__cpdma_chan_free(%x, %x, %d, %d)\n", chan, desc, outlen, status);
+	//rtdm_printk("__cpdma_chan_free(%x, %x, %d, %d)\n", chan, desc, outlen, status);
 
 	token      = (void *)desc_read(desc, sw_token);
 	buff_dma   = desc_read(desc, sw_buffer);
@@ -740,7 +740,7 @@ static int __cpdma_chan_process(struct cpdma_chan *chan)
 	dma_addr_t			desc_dma;
 	rtdm_lockctx_t			context;
 
-	rtdm_printk("__cpdma_chan_process(%x)\n", chan);
+	//rtdm_printk("__cpdma_chan_process(%x)\n", chan);
 	
 	rtdm_lock_get_irqsave(&chan->lock, context);
 	desc = chan->head;
@@ -785,7 +785,7 @@ int cpdma_chan_process(struct cpdma_chan *chan, int quota)
 {
 	int used = 0, ret = 0;
 
-	rtdm_printk("cpdma_chan_process(%x, %d)\n", chan, quota);
+	//rtdm_printk("cpdma_chan_process(%x, %d)\n", chan, quota);
 	
 	if (chan->state != CPDMA_STATE_ACTIVE)
 		return -EINVAL;
