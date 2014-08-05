@@ -190,7 +190,7 @@ libkernel_smsc_a_CPPFLAGS = \
 libkernel_smsc_a_SOURCES = \
 	rt_r8169.c
 
-OBJS = rt_davinci_mdio$(modext) rt_smsc$(modext) 
+OBJS = 
 
 
 if CONFIG_RTNET_DRV_8139
@@ -251,6 +251,10 @@ endif
 
 if CONFIG_RTNET_DRV_R8169
 OBJS += rt_r8169$(modext)
+endif
+
+if CONFIG_RTNET_DRV_TICPSW
+OBJS += rt_davinci_mdio$(modext) rt_smsc$(modext) 
 endif
 
 rt_8139too.o: libkernel_8139too.a
