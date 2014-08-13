@@ -104,8 +104,9 @@ static const int multicast_filter_limit = 32;
 #define R8169_TX_RING_BYTES	(NUM_TX_DESC * sizeof(struct TxDesc))
 #define R8169_RX_RING_BYTES	(NUM_RX_DESC * sizeof(struct RxDesc))
 
+#define SEC_IN_NSEC ((nanosecs_abs_t) 1000000000)
 #define RTL8169_TX_TIMEOUT	(6*HZ)
-#define RTL8169_PHY_TIMEOUT	(10*HZ)
+#define RTL8169_PHY_TIMEOUT	(10*SEC_IN_NSEC)
 
 #define RTL_EEPROM_SIG		cpu_to_le32(0x8129)
 #define RTL_EEPROM_SIG_MASK	cpu_to_le32(0xffff)
@@ -708,7 +709,7 @@ struct rtl8169_private {
 	dma_addr_t RxPhyAddr;
 	void *Rx_databuff[NUM_RX_DESC];	/* Rx data buffers */
 	struct ring_info tx_skb[NUM_TX_DESC];	/* Tx data buffers */
-	struct timer_list timer;
+	rtdm_timer_t timer;
 	u16 cp_cmd;
 	u16 intr_event;
 	u16 napi_event;
@@ -1579,7 +1580,7 @@ static int rtl8169_set_speed(struct rtnet_device *rtdev,
 
 	if (rtnetif_running(rtdev) && (autoneg == AUTONEG_ENABLE) &&
 	    (advertising & ADVERTISED_1000baseT_Full)) {
-		mod_timer(&tp->timer, jiffies + RTL8169_PHY_TIMEOUT);
+	  rtdm_timer_start(&tp->timer, RTL8169_PHY_TIMEOUT, 0, RTDM_TIMERMODE_RELATIVE);
 	}
 out:
 	return ret;
@@ -3270,13 +3271,12 @@ static void rtl_hw_phy_config(struct rtnet_device *rtdev)
 	}
 }
 
-static void rtl8169_phy_timer(unsigned long __opaque)
+static void rtl8169_phy_timer(rtdm_timer_t *timer)
 {
-	struct rtnet_device *rtdev = (struct rtnet_device *)__opaque;
-	struct rtl8169_private *tp = rtdev->priv;
-	struct timer_list *timer = &tp->timer;
+	struct rtl8169_private *tp = container_of(timer, struct rtl8169_private, timer);
+	struct rtnet_device *dev = tp->rtdev;
 	void __iomem *ioaddr = tp->mmio_addr;
-	unsigned long timeout = RTL8169_PHY_TIMEOUT;
+	nanosecs_abs_t timeout = RTL8169_PHY_TIMEOUT;
 	rtdm_lockctx_t flags;
 
 	assert(tp->mac_version > RTL_GIGA_MAC_VER_01);
@@ -3288,7 +3288,7 @@ static void rtl8169_phy_timer(unsigned long __opaque)
 		 * A busy loop could burn quite a few cycles on nowadays CPU.
 		 * Let's delay the execution of the timer for a few ticks.
 		 */
-		timeout = HZ/10;
+		timeout = SEC_IN_NSEC/10;
 		goto out_mod_timer;
 	}
 
@@ -3300,7 +3300,7 @@ static void rtl8169_phy_timer(unsigned long __opaque)
 	tp->phy_reset_enable(tp);
 
 out_mod_timer:
-	mod_timer(timer, jiffies + timeout);
+  rtdm_timer_start_in_handler(timer, timeout, 0, RTDM_TIMERMODE_RELATIVE);
 out_unlock:
 	rtdm_lock_put_irqrestore(&tp->lock, flags);
 }
@@ -4305,9 +4305,7 @@ rtl8169_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	tp->opts1_mask = (tp->mac_version != RTL_GIGA_MAC_VER_01) ?
 		~(RxBOVF | RxFOVF) : ~0;
 
-	init_timer(&tp->timer);
-	tp->timer.data = (unsigned long) rtdev;
-	tp->timer.function = rtl8169_phy_timer;
+	rtdm_timer_init(&tp->timer, rtl8169_phy_timer, "");
 
 	tp->rtl_fw = RTL_FIRMWARE_UNKNOWN;
 
@@ -6170,7 +6168,7 @@ static void rtl8169_down(struct rtnet_device *rtdev)
 	void __iomem *ioaddr = tp->mmio_addr;
 	rtdm_lockctx_t flags;
 
-	del_timer_sync(&tp->timer);
+	rtdm_timer_destroy(&tp->timer);
 
 	rtnetif_stop_queue(rtdev);
 
