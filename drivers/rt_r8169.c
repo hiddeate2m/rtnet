@@ -731,7 +731,7 @@ struct rtl8169_private {
 	} jumbo_ops;
 
 	int (*set_speed)(struct rtnet_device *, u8 aneg, u16 sp, u8 dpx, u32 adv);
-	int (*get_settings)(struct rtnet_device *, struct ethtool_cmd *);
+	//int (*get_settings)(struct rtnet_device *, struct ethtool_cmd *);
 	void (*phy_reset_enable)(struct rtl8169_private *tp);
 	void (*hw_start)(struct rtnet_device *);
 	unsigned int (*phy_reset_pending)(struct rtl8169_private *tp);
@@ -1671,6 +1671,7 @@ static void rtl8169_rx_vlan_tag(struct RxDesc *desc, struct rtskb *skb)
 }
 */
 
+/*
 static int rtl8169_gset_tbi(struct rtnet_device *dev, struct ethtool_cmd *cmd)
 {
 	struct rtl8169_private *tp = dev->priv;
@@ -1687,17 +1688,20 @@ static int rtl8169_gset_tbi(struct rtnet_device *dev, struct ethtool_cmd *cmd)
 	cmd->autoneg = !!(status & TBINwEnable);
 
 	ethtool_cmd_speed_set(cmd, SPEED_1000);
-	cmd->duplex = DUPLEX_FULL; /* Always set */
+	cmd->duplex = DUPLEX_FULL; // Always set //
 
 	return 0;
 }
+*/
 
+/*
 static int rtl8169_gset_xmii(struct rtnet_device *dev, struct ethtool_cmd *cmd)
 {
 	struct rtl8169_private *tp = dev->priv;
 
 	return mii_ethtool_gset(&tp->mii, cmd);
 }
+*/
 
 /*
 static int rtl8169_get_settings(struct rtnet_device *dev, struct ethtool_cmd *cmd)
@@ -4207,7 +4211,7 @@ rtl8169_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	if (rtl_tbi_enabled(tp)) {
 	    rtnetif_info(tp, probe, dev, "Using TBI\n");
 		tp->set_speed = rtl8169_set_speed_tbi;
-		tp->get_settings = rtl8169_gset_tbi;
+		//tp->get_settings = rtl8169_gset_tbi;
 		tp->phy_reset_enable = rtl8169_tbi_reset_enable;
 		tp->phy_reset_pending = rtl8169_tbi_reset_pending;
 		tp->link_ok = rtl8169_tbi_link_ok;
@@ -4215,7 +4219,7 @@ rtl8169_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	} else {
 	    rtnetif_info(tp, probe, dev, "Using XMII\n");
 		tp->set_speed = rtl8169_set_speed_xmii;
-		tp->get_settings = rtl8169_gset_xmii;
+		//tp->get_settings = rtl8169_gset_xmii;
 		tp->phy_reset_enable = rtl8169_xmii_reset_enable;
 		tp->phy_reset_pending = rtl8169_xmii_reset_pending;
 		tp->link_ok = rtl8169_xmii_link_ok;
