@@ -365,8 +365,8 @@ static inline struct rtskb *dev_alloc_rtskb_ip_align(struct rtnet_device *ndev, 
 
 	if(skb)
 		skb->rtdev = ndev;
-	//if(NET_IP_ALIGN && skb)
-	//	rtskb_reserve(skb, NET_IP_ALIGN);
+	if(NET_IP_ALIGN && skb)
+		rtskb_reserve(skb, NET_IP_ALIGN);
 	return skb;
 }
 
